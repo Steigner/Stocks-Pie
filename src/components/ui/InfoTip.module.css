@@ -1,0 +1,60 @@
+.wrap {
+  position: relative;
+  display: inline-flex;
+  vertical-align: middle;
+}
+
+.marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.15rem;
+  height: 1.15rem;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  background: none;
+  color: var(--color-text-secondary);
+  font-size: 0.72rem;
+  font-style: italic;
+  font-weight: 600;
+  line-height: 1;
+  cursor: help;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.marker:hover,
+.marker[aria-expanded='true'] {
+  background: var(--color-bg-subtle-strong);
+  color: var(--color-text-primary);
+}
+
+.bubble {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  left: 0;
+  z-index: 20;
+  width: max-content;
+  max-width: min(22rem, 70vw);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  box-shadow: var(--shadow-md);
+  color: var(--color-text-secondary);
+  font-size: 0.82rem;
+  font-weight: 400;
+  font-style: normal;
+  line-height: 1.45;
+  text-transform: none;
+  letter-spacing: normal;
+  white-space: normal;
+}
+
+/* Near the right edge the bubble would otherwise run off the screen. */
+.wrap:last-child .bubble {
+  left: auto;
+  right: 0;
+}

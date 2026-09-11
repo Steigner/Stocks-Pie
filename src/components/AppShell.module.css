@@ -1,0 +1,147 @@
+.shell {
+  display: flex;
+  min-height: 100vh;
+  /* Leaves out mobile Safari's toolbar, which vh counts as visible. */
+  min-height: 100dvh;
+}
+
+.sidebar {
+  width: var(--sidebar-width);
+  flex-shrink: 0;
+  background: var(--color-bg-translucent);
+  border-right: 1px solid var(--color-border);
+  padding: var(--space-5) var(--space-3);
+  /* With viewport-fit=cover, a phone on its side puts the notch on this edge. */
+  padding-left: max(var(--space-3), env(safe-area-inset-left));
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100dvh;
+}
+
+.brand {
+  font-size: 1.2rem;
+  font-weight: 700;
+  padding: 0 var(--space-2);
+}
+
+.navList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.navItem {
+  width: 100%;
+  transition: background 0.15s ease;
+  text-align: left;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.navItem:hover {
+  background: var(--color-bg-subtle);
+}
+
+.navItemActive,
+.navItemActive:hover {
+  background: var(--color-accent);
+  color: white;
+}
+
+.footer {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.location {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  padding: 0 var(--space-2);
+  overflow-wrap: anywhere;
+}
+
+.content {
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-6) clamp(var(--space-4), 4vw, var(--space-7));
+  padding-right: max(
+    clamp(var(--space-4), 4vw, var(--space-7)),
+    env(safe-area-inset-right)
+  );
+}
+
+.contentInner {
+  max-width: 960px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+@media (max-width: 767px) {
+  .shell {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    position: fixed;
+    inset: auto 0 0 0;
+    top: auto;
+    height: auto;
+    width: 100%;
+    flex-direction: row;
+    align-items: center;
+    padding: var(--space-2);
+    /* Keeps the bar clear of the iPhone home indicator. */
+    padding-bottom: max(var(--space-2), env(safe-area-inset-bottom));
+    border-right: none;
+    border-top: 1px solid var(--color-border);
+    z-index: 50;
+    /* Only here does content scroll underneath; on the desktop sidebar the
+       blur would cost a compositing layer for nothing. */
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+
+  .brand,
+  .location {
+    display: none;
+  }
+
+  .footer {
+    margin-top: 0;
+    width: auto;
+  }
+
+  .navList {
+    flex-direction: row;
+    flex: 1;
+    justify-content: space-around;
+  }
+
+  .navItem {
+    padding: 8px;
+    font-size: 0.78rem;
+    text-align: center;
+  }
+
+  .content {
+    padding: var(--space-4) var(--space-4)
+      calc(var(--nav-bar-height) + var(--space-5) + env(safe-area-inset-bottom));
+  }
+}

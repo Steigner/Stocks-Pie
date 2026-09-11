@@ -1,0 +1,4 @@
+# The build runs in a Linux container; keep checked-in files LF so Prettier's
+# format check gives the same answer on Windows as it does in Docker.
+* text=auto eol=lf
+*.png binary

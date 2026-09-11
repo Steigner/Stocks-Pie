@@ -1,0 +1,111 @@
+name: Release
+
+# Builds the desktop installers when a version tag is pushed:
+#   git tag v1.0.0 && git push origin v1.0.0
+# Keep the tag in step with "version" in package.json - the installers take
+# their version number from there. Code signing switches itself on once the
+# secrets and variables used by the signing steps below exist.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  # Creates the draft GitHub Release and uploads the installers to it.
+  contents: write
+
+jobs:
+  desktop:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-latest
+            args: ''
+          # One app for both Apple Silicon and Intel Macs.
+          - platform: macos-latest
+            args: --target universal-apple-darwin
+          # The oldest supported Ubuntu, so the Linux build also runs on older
+          # distributions.
+          - platform: ubuntu-22.04
+            args: ''
+    runs-on: ${{ matrix.platform }}
+    env:
+      APPLE_SIGNING: ${{ secrets.APPLE_CERTIFICATE != '' }}
+      WINDOWS_SIGNING: ${{ vars.AZURE_SIGNING_ACCOUNT != '' }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Install Linux build dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - run: npm ci
+
+      # Only the SVG source is committed; every size and format is derived from it.
+      - name: Generate app icons
+        run: npx tauri icon src-tauri/app-icon.svg
+
+      # Azure Trusted Signing: Tauri runs this command on every Windows binary.
+      - name: Prepare Windows code signing
+        if: runner.os == 'Windows' && env.WINDOWS_SIGNING == 'true'
+        shell: pwsh
+        run: |
+          cargo install trusted-signing-cli --locked
+          $sign = @{
+            cmd = 'trusted-signing-cli'
+            args = @(
+              '-e', '${{ vars.AZURE_SIGNING_ENDPOINT }}',
+              '-a', '${{ vars.AZURE_SIGNING_ACCOUNT }}',
+              '-c', '${{ vars.AZURE_SIGNING_PROFILE }}',
+              '-d', 'Stocks Pie', '%1'
+            )
+          }
+          @{ bundle = @{ windows = @{ signCommand = $sign } } } |
+            ConvertTo-Json -Depth 5 | Set-Content src-tauri/tauri.signing.json
+          'SIGNING_ARGS=--config src-tauri/tauri.signing.json' |
+            Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+
+      # Signed with the Developer ID certificate and notarized by Apple, so
+      # Gatekeeper opens the app without a warning.
+      - name: Build and publish (signed macOS)
+        if: runner.os == 'macOS' && env.APPLE_SIGNING == 'true'
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: Stocks Pie ${{ github.ref_name }}
+          releaseBody: See "Download" in the README for what to expect on first launch.
+          releaseDraft: true
+          args: ${{ matrix.args }}
+
+      - name: Build and publish
+        if: runner.os != 'macOS' || env.APPLE_SIGNING != 'true'
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Read by trusted-signing-cli; unused while Windows signing is off.
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: Stocks Pie ${{ github.ref_name }}
+          releaseBody: See "Download" in the README for what to expect on first launch.
+          releaseDraft: true
+          args: ${{ matrix.args }} ${{ env.SIGNING_ARGS }}

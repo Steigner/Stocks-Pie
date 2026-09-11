@@ -1,0 +1,8 @@
+version: 2
+updates:
+  # Proposes new major versions of the GitHub Actions in the workflows; the @vN
+  # tags already pick up minor releases on their own.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

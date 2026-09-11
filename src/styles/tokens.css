@@ -1,0 +1,104 @@
+:root {
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica,
+    Arial, sans-serif;
+
+  --color-accent: #0a84ff;
+  --color-success: #34c759;
+  --color-warning: #ff9f0a;
+  --color-danger: #ff3b30;
+
+  /* The dark palette, defined once here and switched on below. */
+  --dark-accent-hover: #409cff;
+  --dark-danger-hover: #ff6961;
+  --dark-bg: #000000;
+  --dark-bg-elevated: #1c1c1e;
+  --dark-bg-translucent: rgba(28, 28, 30, 0.72);
+  --dark-bg-subtle: rgba(120, 120, 128, 0.16);
+  --dark-bg-subtle-strong: rgba(120, 120, 128, 0.24);
+  --dark-text-primary: #f5f5f7;
+  --dark-text-secondary: #98989d;
+  --dark-border: rgba(84, 84, 88, 0.48);
+  --dark-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --dark-shadow-md: 0 8px 24px rgba(0, 0, 0, 0.4);
+
+  --color-accent-hover: #0071e3;
+  --color-danger-hover: #e0342b;
+  --color-bg: #f5f5f7;
+  --color-bg-elevated: #ffffff;
+  --color-bg-translucent: rgba(255, 255, 255, 0.72);
+  --color-bg-subtle: rgba(120, 120, 128, 0.08);
+  --color-bg-subtle-strong: rgba(120, 120, 128, 0.16);
+  --color-text-primary: #1d1d1f;
+  --color-text-secondary: #6e6e73;
+  --color-border: rgba(60, 60, 67, 0.16);
+  /* Translucent grey reads on both palettes, so the scrollbar needs no dark twin. */
+  --color-scrollbar: rgba(120, 120, 128, 0.4);
+  --color-scrollbar-hover: rgba(120, 120, 128, 0.64);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.08);
+
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+
+  --sidebar-width: 220px;
+  --nav-bar-height: 64px;
+
+  color-scheme: light dark;
+}
+
+/*
+ * The same switch, twice: once for "follow the system unless the user chose
+ * light", once for "the user chose dark". CSS has no way to share one block
+ * between a media query and an attribute selector.
+ */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --color-accent-hover: var(--dark-accent-hover);
+    --color-danger-hover: var(--dark-danger-hover);
+    --color-bg: var(--dark-bg);
+    --color-bg-elevated: var(--dark-bg-elevated);
+    --color-bg-translucent: var(--dark-bg-translucent);
+    --color-bg-subtle: var(--dark-bg-subtle);
+    --color-bg-subtle-strong: var(--dark-bg-subtle-strong);
+    --color-text-primary: var(--dark-text-primary);
+    --color-text-secondary: var(--dark-text-secondary);
+    --color-border: var(--dark-border);
+    --shadow-sm: var(--dark-shadow-sm);
+    --shadow-md: var(--dark-shadow-md);
+  }
+}
+
+:root[data-theme='dark'] {
+  --color-accent-hover: var(--dark-accent-hover);
+  --color-danger-hover: var(--dark-danger-hover);
+  --color-bg: var(--dark-bg);
+  --color-bg-elevated: var(--dark-bg-elevated);
+  --color-bg-translucent: var(--dark-bg-translucent);
+  --color-bg-subtle: var(--dark-bg-subtle);
+  --color-bg-subtle-strong: var(--dark-bg-subtle-strong);
+  --color-text-primary: var(--dark-text-primary);
+  --color-text-secondary: var(--dark-text-secondary);
+  --color-border: var(--dark-border);
+  --shadow-sm: var(--dark-shadow-sm);
+  --shadow-md: var(--dark-shadow-md);
+}
+
+/* Keeps native controls and scrollbars in step with an explicit choice. */
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
