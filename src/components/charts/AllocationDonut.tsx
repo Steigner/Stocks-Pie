@@ -16,7 +16,13 @@ const SLICE_COLORS = [
 /** A circle whose circumference is exactly 100, so dash lengths read as percentages. */
 const RADIUS = 50 / Math.PI;
 
-export function AllocationDonut({ positions }: { positions: readonly Position[] }) {
+export function AllocationDonut({
+  positions,
+  label = 'Target allocation',
+}: {
+  positions: readonly Position[];
+  label?: string;
+}) {
   const total = positions.reduce((sum, position) => sum + position.targetPct, 0);
   let start = 0;
   const slices = positions.map((position, index) => {
@@ -32,16 +38,10 @@ export function AllocationDonut({ positions }: { positions: readonly Position[] 
     return slice;
   });
 
-  // Keyed by index: this draws the unsaved draft, where a ticker can still be
-  // blank or duplicated.
+  // Keyed by index: a file edited by hand can hold a blank or repeated ticker.
   return (
     <div className={styles.chart}>
-      <svg
-        className={styles.donut}
-        viewBox="0 0 42 42"
-        role="img"
-        aria-label="Target allocation"
-      >
+      <svg className={styles.donut} viewBox="0 0 42 42" role="img" aria-label={label}>
         {slices.map((slice, index) => (
           <circle
             key={index}

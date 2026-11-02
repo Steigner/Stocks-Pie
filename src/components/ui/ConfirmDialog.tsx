@@ -5,6 +5,7 @@ import styles from './ConfirmDialog.module.css';
 interface ConfirmDialogProps {
   title: string;
   children: ReactNode;
+  confirmLabel?: string;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -12,6 +13,7 @@ interface ConfirmDialogProps {
 export function ConfirmDialog({
   title,
   children,
+  confirmLabel = 'Delete',
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
@@ -43,7 +45,7 @@ export function ConfirmDialog({
             Cancel
           </Button>
           <Button variant="danger" onClick={onConfirm}>
-            Delete
+            {confirmLabel}
           </Button>
         </div>
       </div>

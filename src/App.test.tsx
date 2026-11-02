@@ -51,6 +51,10 @@ class FolderStore implements PortfolioStore {
   }
 }
 
+async function openPortfolio(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(await screen.findByRole('button', { name: 'Portfolio' }));
+}
+
 async function investOneRound(user: ReturnType<typeof userEvent.setup>) {
   const budgetInput = await screen.findByLabelText('How much am I investing now (CZK)');
   await user.clear(budgetInput);
@@ -73,7 +77,7 @@ describe('App', () => {
 
     await user.click(screen.getByRole('button', { name: 'Portfolio' }));
 
-    expect(screen.getByDisplayValue('NVDA')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Edit NVDA' })).toBeInTheDocument();
   });
 
   it('invests a deposit, records the round, then fully undoes it from history', async () => {
@@ -110,10 +114,154 @@ describe('App', () => {
 
     await user.click(screen.getByRole('button', { name: 'Portfolio' }));
 
-    expect(await screen.findByDisplayValue('Alfa Holding')).toBeInTheDocument();
-    for (const input of screen.getAllByLabelText('Holding in CZK')) {
-      expect(input).toHaveValue(0);
-    }
+    expect(await screen.findByText('Alfa Holding')).toBeInTheDocument();
+    expect(screen.getAllByText('0 CZK')).toHaveLength(3);
+  });
+
+  it('saves an edit from the editor straight away', async () => {
+    const user = userEvent.setup();
+    const store = new InMemoryPortfolioStore(PORTFOLIO);
+    render(<App store={store} />);
+    await openPortfolio(user);
+
+    await user.click(screen.getByRole('button', { name: 'Edit ALFA' }));
+    const dialog = await screen.findByRole('dialog');
+    const holding = within(dialog).getByLabelText('Holding (CZK)');
+    await user.clear(holding);
+    await user.type(holding, '1234');
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await waitFor(() => expect(store.saved.at(-1)?.positions[0]?.holding).toBe(1234));
+  });
+
+  it('keeps the editor open and explains a bad ticker', async () => {
+    const user = userEvent.setup();
+    const store = new InMemoryPortfolioStore(PORTFOLIO);
+    render(<App store={store} />);
+    await openPortfolio(user);
+
+    await user.click(screen.getByRole('button', { name: 'Edit ALFA' }));
+    const dialog = await screen.findByRole('dialog');
+    const ticker = within(dialog).getByLabelText('Ticker');
+    await user.clear(ticker);
+    await user.type(ticker, 'BETA');
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }));
+
+    expect(
+      within(dialog).getByText('Each ticker can only be used once.'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(store.saved).toEqual([]);
+  });
+
+  it('lets one row be saved while another row in the file is invalid', async () => {
+    const user = userEvent.setup();
+    const store = new InMemoryPortfolioStore({
+      ...PORTFOLIO,
+      positions: [
+        { name: 'Alfa Holding', ticker: 'ALFA', targetPct: 60, holding: 0 },
+        { name: 'No ticker', ticker: '', targetPct: 40, holding: 0 },
+      ],
+    });
+    render(<App store={store} />);
+    await openPortfolio(user);
+
+    await user.click(screen.getByRole('button', { name: 'Edit ALFA' }));
+    const dialog = await screen.findByRole('dialog');
+    await user.type(within(dialog).getByLabelText('Holding (CZK)'), '500');
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await waitFor(() => expect(store.saved).toHaveLength(1));
+  });
+
+  it('adds a position from an empty portfolio', async () => {
+    const user = userEvent.setup();
+    const store = new InMemoryPortfolioStore(emptyPortfolio());
+    render(<App store={store} />);
+    await openPortfolio(user);
+
+    expect(screen.getByText('No positions yet.')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Add position' }));
+    const dialog = await screen.findByRole('dialog');
+    await user.type(within(dialog).getByLabelText('Ticker'), 'NEW');
+    await user.type(within(dialog).getByLabelText('Target %'), '100');
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }));
+
+    await waitFor(() =>
+      expect(store.saved.at(-1)?.positions.map((position) => position.ticker)).toEqual([
+        'NEW',
+      ]),
+    );
+  });
+
+  it('asks before removing a position', async () => {
+    const user = userEvent.setup();
+    const store = new InMemoryPortfolioStore(PORTFOLIO);
+    render(<App store={store} />);
+    await openPortfolio(user);
+
+    await user.click(screen.getByRole('button', { name: 'Edit ALFA' }));
+    const editor = await screen.findByRole('dialog');
+    await user.click(within(editor).getByRole('button', { name: 'Remove' }));
+
+    const confirmation = await screen.findByRole('alertdialog', {
+      name: 'Remove ALFA?',
+    });
+    await user.click(within(confirmation).getByRole('button', { name: 'Cancel' }));
+
+    expect(store.saved).toEqual([]);
+
+    await user.click(within(editor).getByRole('button', { name: 'Remove' }));
+    await user.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: 'Remove',
+      }),
+    );
+
+    await waitFor(() =>
+      expect(store.saved.at(-1)?.positions.map((position) => position.ticker)).toEqual([
+        'BETA',
+      ]),
+    );
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('offers to fix targets that do not add up', async () => {
+    const user = userEvent.setup();
+    const store = new InMemoryPortfolioStore({
+      ...PORTFOLIO,
+      positions: [
+        { name: 'Alfa Holding', ticker: 'ALFA', targetPct: 60, holding: 0 },
+        { name: 'Beta Works', ticker: 'BETA', targetPct: 30, holding: 0 },
+      ],
+    });
+    render(<App store={store} />);
+    await openPortfolio(user);
+
+    expect(screen.getByText('Targets add up to 90.0%, not 100%.')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Make them 100%' }));
+
+    expect(screen.queryByText(/Targets add up to/)).not.toBeInTheDocument();
+    await waitFor(() => {
+      const positions = store.saved.at(-1)?.positions ?? [];
+      expect(positions.reduce((total, item) => total + item.targetPct, 0)).toBeCloseTo(
+        100,
+      );
+    });
+  });
+
+  it('shows 0% shares rather than NaN when nothing is held', async () => {
+    const user = userEvent.setup();
+    render(<App store={new InMemoryPortfolioStore(PORTFOLIO)} />);
+
+    await openPortfolio(user);
+
+    expect(screen.getAllByText('0.0% now')).toHaveLength(2);
+    expect(screen.queryByText(/NaN/)).not.toBeInTheDocument();
   });
 
   it('sends a first-time user to the Portfolio tab instead of an empty plan', async () => {
@@ -199,7 +347,7 @@ describe('App', () => {
 
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'About the portfolio table' }));
+    await user.click(screen.getByRole('button', { name: 'About the portfolio list' }));
 
     expect(await screen.findByRole('tooltip')).toHaveTextContent(
       /Targets must add up to 100%/,
@@ -216,7 +364,7 @@ describe('App', () => {
     await user.click(await screen.findByRole('button', { name: 'Portfolio' }));
 
     // fireEvent.click, unlike user.click, leaves focus alone - as Safari does.
-    fireEvent.click(screen.getByRole('button', { name: 'About the portfolio table' }));
+    fireEvent.click(screen.getByRole('button', { name: 'About the portfolio list' }));
     expect(await screen.findByRole('tooltip')).toBeInTheDocument();
 
     fireEvent.pointerDown(document.body);
@@ -234,7 +382,7 @@ describe('App', () => {
 
     await waitFor(() => expect(store.saved).toEqual([PORTFOLIO]));
     await user.click(await screen.findByRole('button', { name: 'Portfolio' }));
-    expect(screen.getByDisplayValue('Alfa Holding')).toBeInTheDocument();
+    expect(screen.getByText('Alfa Holding')).toBeInTheDocument();
   });
 
   it('keeps everything as it was when changing folder is cancelled', async () => {
