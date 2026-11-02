@@ -31,6 +31,8 @@ seen() {
 wait_for() {
   for _ in $(seq 1 20); do
     seen "$1" && return 0
+    # A slow emulator's own apps can stall right after booting, and cover the screen.
+    grep -qi "isn.t responding" android-check/ui.xml && tap 'Wait'
     sleep 2
   done
   return 1

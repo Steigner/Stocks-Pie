@@ -43,6 +43,7 @@ The desktop app isn't code-signed yet, so the first launch needs one extra click
 - **macOS:** go to _System Settings → Privacy & Security_ and click _Open Anyway_.
 
 On **Android**, open the `.apk` file on your phone and allow the install when asked.
+So far it has only been tested on emulators, not on a real phone.
 Play Protect may warn you, because the app isn't on Google Play. When you pick a
 folder, create a new one. Android doesn't let apps use the top of your storage or
 the Download folder itself.

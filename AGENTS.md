@@ -28,7 +28,9 @@ contributors.
   not assume Node.js is installed on the host. CI runs the same npm scripts on
   Node 24; [.github/workflows/ci.yml](.github/workflows/ci.yml) publishes the preview;
   [.github/workflows/release.yml](.github/workflows/release.yml) builds the
-  installers and the APK from a version tag.
+  installers and the APK from a version tag, and publishes the APK only after
+  [.github/android-check.sh](.github/android-check.sh) passes on emulators. That
+  check is the only test on Android, so extend it when Android behaviour changes.
 - `src-tauri/gen/android` is committed, because it holds hand edits: the manifest,
   `MainActivity.kt`, `FolderPlugin.kt` and the signing config. Regenerating it with
   `tauri android init` overwrites them. Only `gen/schemas` stays out of git.
