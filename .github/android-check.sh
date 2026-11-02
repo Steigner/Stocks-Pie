@@ -14,8 +14,8 @@ fail() {
   FAILED=1
 }
 dump() {
-  adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1
-  adb pull /sdcard/ui.xml android-check/ui.xml >/dev/null 2>&1
+  adb shell uiautomator dump /data/local/tmp/ui.xml >/dev/null 2>&1
+  adb pull /data/local/tmp/ui.xml android-check/ui.xml >/dev/null 2>&1
 }
 shot() {
   adb exec-out screencap -p >"android-check/$1.png"
@@ -62,6 +62,17 @@ EOF
   adb shell input tap $point
   sleep 2
 }
+# Taps until the next screen shows; a tap can land before a list is ready for it.
+tap_until() {
+  for _ in 1 2 3; do
+    tap "$1"
+    for _ in 1 2 3 4 5; do
+      seen "$2" && return 0
+      sleep 2
+    done
+  done
+  return 1
+}
 webview_bounds() {
   dump
   python3 - <<'EOF'
@@ -99,9 +110,13 @@ else
   finish
 fi
 shot picker
-tap 'Documents' && tap 'SmokeTest'
+if seen "Can.t use this folder"; then
+  note "the picker refuses the top of the storage"
+fi
+tap_until 'Documents' 'SmokeTest'
+tap_until 'SmokeTest' 'Use this folder'
 shot picker-folder
-tap 'Use this folder'
+tap_until 'Use this folder' 'Allow'
 shot picker-confirm
 tap 'Allow'
 if wait_for 'How much are you investing'; then
@@ -176,6 +191,25 @@ sleep 3
 shot large-text
 adb shell settings put system font_scale 1.0
 
+# Android destroys any activity left, as it may on a real phone short of memory.
+# The picker must still open from the new one, and finish with the folder intact.
+adb shell settings put global always_finish_activities 1
+adb shell input keyevent KEYCODE_HOME
+sleep 3
+adb shell am start -n "$PACKAGE/.MainActivity"
+wait_for 'How much are you investing'
+tap 'Settings'
+tap 'Change folder'
+if wait_for 'documentsui'; then
+  note "picker opens from a recreated activity"
+else
+  fail "picker did not open from a recreated activity: $(texts)"
+fi
+adb shell input keyevent KEYCODE_BACK
+sleep 3
+adb shell settings put global always_finish_activities 0
+shot after-recreate
+
 adb shell am force-stop "$PACKAGE"
 adb shell am start -n "$PACKAGE/.MainActivity"
 if wait_for 'How much are you investing'; then
@@ -187,7 +221,8 @@ shot restarted
 
 adb reboot
 adb wait-for-device
-until [ "$(adb shell getprop sys.boot_completed | tr -d '')" = 1 ]; do sleep 3; done
+until [ "$(adb shell getprop sys.boot_completed | tr -d '
+')" = 1 ]; do sleep 3; done
 sleep 10
 adb shell am start -n "$PACKAGE/.MainActivity"
 if wait_for 'How much are you investing'; then

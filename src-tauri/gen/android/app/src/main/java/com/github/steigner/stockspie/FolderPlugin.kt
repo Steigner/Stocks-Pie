@@ -7,7 +7,6 @@ import android.provider.DocumentsContract
 import android.provider.DocumentsContract.Document
 import androidx.activity.result.ActivityResult
 import app.tauri.Logger
-import app.tauri.annotation.ActivityCallback
 import app.tauri.annotation.Command
 import app.tauri.annotation.InvokeArg
 import app.tauri.annotation.TauriPlugin
@@ -38,8 +37,10 @@ class WriteArgs {
  */
 @TauriPlugin
 class FolderPlugin(private val activity: Activity) : Plugin(activity) {
-  private val resolver get() = activity.contentResolver
-  private val preferences get() = activity.getSharedPreferences(PREFERENCES, Activity.MODE_PRIVATE)
+  // From the application: this activity may long be gone, as the plugin outlives it.
+  private val context = activity.applicationContext
+  private val resolver get() = context.contentResolver
+  private val preferences get() = context.getSharedPreferences(PREFERENCES, Activity.MODE_PRIVATE)
 
   // One thread, so an older write can never land after a newer one.
   private val worker = Executors.newSingleThreadExecutor()
@@ -112,11 +113,13 @@ class FolderPlugin(private val activity: Activity) : Plugin(activity) {
   fun pick(invoke: Invoke) {
     val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
       .addFlags(READ_WRITE or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
-    startActivityForResult(invoke, intent, "folderPicked")
+    val opened = MainActivity.launchPicker(intent) { result -> folderPicked(invoke, result) }
+    if (!opened) {
+      invoke.reject("The app isn't ready. Try again.")
+    }
   }
 
-  @ActivityCallback
-  fun folderPicked(invoke: Invoke, result: ActivityResult) {
+  private fun folderPicked(invoke: Invoke, result: ActivityResult) {
     val folder = result.data?.data
     if (result.resultCode != Activity.RESULT_OK || folder == null) {
       invoke.resolve(JSObject())
