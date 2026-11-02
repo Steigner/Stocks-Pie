@@ -23,9 +23,6 @@ struct WriteArgs {
     text: String,
 }
 
-#[derive(Deserialize)]
-struct Done {}
-
 fn plugin() -> TauriPlugin<Wry> {
     PluginBuilder::new("folder")
         .setup(|app, api| {
@@ -65,11 +62,10 @@ async fn load_portfolio(folder: State<'_, Folder>) -> Result<Option<String>, Str
 
 #[tauri::command]
 async fn save_portfolio(folder: State<'_, Folder>, text: String) -> Result<(), String> {
-    let _: Done = folder
+    folder
         .0
-        .run_mobile_plugin("write", WriteArgs { text })
-        .map_err(|error| error.to_string())?;
-    Ok(())
+        .run_mobile_plugin::<()>("write", WriteArgs { text })
+        .map_err(|error| error.to_string())
 }
 
 pub fn attach(builder: Builder<Wry>) -> Builder<Wry> {

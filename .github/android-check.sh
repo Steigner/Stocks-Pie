@@ -46,10 +46,11 @@ tap() {
 import os, re
 import xml.etree.ElementTree as ET
 wanted = os.environ['WANTED'].lower()
+# A closed side panel keeps its nodes off screen, so only what is on screen counts.
 for node in ET.parse('android-check/ui.xml').iter('node'):
     label = (node.get('text') or node.get('content-desc') or '').strip().lower()
-    if label == wanted:
-        a, b, c, d = map(int, re.findall(r'\d+', node.get('bounds')))
+    a, b, c, d = map(int, re.findall(r'-?\d+', node.get('bounds')))
+    if label == wanted and a >= 0 and c > a and d > b:
         print((a + c) // 2, (b + d) // 2)
         break
 EOF
@@ -113,13 +114,19 @@ shot picker
 if seen "Can.t use this folder"; then
   note "the picker refuses the top of the storage"
 fi
-tap_until 'Documents' 'SmokeTest'
-tap_until 'SmokeTest' 'Use this folder'
+tap_until 'Documents' 'Use this folder'
+sleep 2
+# The picker can miss a folder made from outside, so Documents itself will do too.
+if seen 'SmokeTest'; then
+  tap_until 'SmokeTest' 'Use this folder'
+else
+  FOLDER=/sdcard/Documents
+fi
 shot picker-folder
 tap_until 'Use this folder' 'Allow'
 shot picker-confirm
 tap 'Allow'
-if wait_for 'How much are you investing'; then
+if wait_for 'Add your positions'; then
   note "folder connected"
 else
   fail "folder not connected: $(texts)"
