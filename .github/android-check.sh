@@ -128,10 +128,21 @@ for _ in 1 2 3; do
   done
 done
 sleep 3
-# The picker can miss a folder made from outside, so Documents itself will do too.
-if seen 'SmokeTest'; then
+if seen "Can.t use this folder"; then
+  # What the README tells people to do. Some versions won't open a folder from here.
+  note "Documents did not open"
+  tap 'Create new folder' || tap 'New folder'
+  sleep 2
+  adb shell input text SmokeNew
+  tap 'OK'
+  sleep 3
+  shot picker-created
+  note "after creating a folder: $(texts)"
+  FOLDER=/sdcard/SmokeNew
+elif seen 'SmokeTest'; then
   tap_until 'SmokeTest' 'Use this folder'
 else
+  # The picker can miss a folder made from outside, so Documents itself will do too.
   FOLDER=/sdcard/Documents
 fi
 shot picker-folder
