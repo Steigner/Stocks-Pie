@@ -50,11 +50,6 @@ textarea {
   font: inherit;
 }
 
-table {
-  border-collapse: collapse;
-  width: 100%;
-}
-
 /* One focus ring for every control, so no component has to remember its own. */
 :focus-visible {
   outline: 2px solid var(--color-accent);

@@ -57,12 +57,10 @@ async function openPortfolio(user: ReturnType<typeof userEvent.setup>) {
 }
 
 async function investOneRound(user: ReturnType<typeof userEvent.setup>) {
-  const budgetInput = await screen.findByLabelText('How much am I investing now (CZK)');
+  const budgetInput = await screen.findByLabelText('How much are you investing (CZK)');
   await user.clear(budgetInput);
   await user.type(budgetInput, '100000');
-  await user.click(
-    screen.getByRole('button', { name: "I've placed the orders, record this round" }),
-  );
+  await user.click(screen.getByRole('button', { name: "I've placed the orders" }));
 }
 
 describe('App', () => {
@@ -89,17 +87,16 @@ describe('App', () => {
     render(<App store={store} />);
 
     const budgetInput = await screen.findByLabelText(
-      'How much am I investing now (CZK)',
+      'How much are you investing (CZK)',
     );
     await user.clear(budgetInput);
     await user.type(budgetInput, '100000');
 
     expect(await screen.findByText('Send these orders')).toBeInTheDocument();
-    expect(screen.getByText('100,000 CZK')).toBeInTheDocument();
+    expect(screen.getByText('60,000 CZK')).toBeInTheDocument();
+    expect(screen.getByText('40,000 CZK')).toBeInTheDocument();
 
-    await user.click(
-      screen.getByRole('button', { name: "I've placed the orders, record this round" }),
-    );
+    await user.click(screen.getByRole('button', { name: "I've placed the orders" }));
 
     expect(await screen.findByText(/Recorded 100,000 CZK/)).toBeInTheDocument();
 
@@ -267,6 +264,40 @@ describe('App', () => {
     expect(screen.queryByText(/NaN/)).not.toBeInTheDocument();
   });
 
+  it('shows each order as a row with where the position ends up', async () => {
+    const user = userEvent.setup();
+    render(<App store={new InMemoryPortfolioStore(PORTFOLIO)} />);
+
+    await user.type(
+      await screen.findByLabelText('How much are you investing (CZK)'),
+      '100000',
+    );
+
+    expect(await screen.findByText('0.0% to 60.0%, target 60%')).toBeInTheDocument();
+    expect(screen.getByText('2 positions')).toBeInTheDocument();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+  });
+
+  it('folds away the positions skipped this round', async () => {
+    const user = userEvent.setup();
+    const store = new InMemoryPortfolioStore({
+      ...PORTFOLIO,
+      positions: [
+        { name: 'Alfa Holding', ticker: 'ALFA', targetPct: 60, holding: 100_000 },
+        { name: 'Beta Works', ticker: 'BETA', targetPct: 40, holding: 0 },
+      ],
+    });
+    render(<App store={store} />);
+
+    await user.type(
+      await screen.findByLabelText('How much are you investing (CZK)'),
+      '10000',
+    );
+
+    expect(await screen.findByText('Skipped this time (1)')).toBeInTheDocument();
+    expect(screen.getByText('1 position')).toBeInTheDocument();
+  });
+
   it('sends a first-time user to the Portfolio tab instead of an empty plan', async () => {
     const store = new InMemoryPortfolioStore(emptyPortfolio());
     render(<App store={store} />);
@@ -281,18 +312,18 @@ describe('App', () => {
     render(<App store={store} />);
 
     const budgetInput = await screen.findByLabelText(
-      'How much am I investing now (EUR)',
+      'How much are you investing (EUR)',
     );
     await userEvent.setup().type(budgetInput, '100000');
 
-    expect(await screen.findByText('100,000 EUR')).toBeInTheDocument();
+    expect(await screen.findByText('60,000 EUR')).toBeInTheDocument();
   });
 
   it('leaves the stored file alone when nothing has been changed yet', async () => {
     const store = new InMemoryPortfolioStore(PORTFOLIO);
     render(<App store={store} />);
 
-    await screen.findByLabelText('How much am I investing now (CZK)');
+    await screen.findByLabelText('How much are you investing (CZK)');
 
     expect(store.saved).toEqual([]);
   });
