@@ -8,6 +8,9 @@ FOLDER=/sdcard/Documents/SmokeTest
 mkdir -p android-check
 FAILED=0
 
+# A stuck adb would otherwise hold the job until GitHub's six hour limit.
+adb() { timeout 120 adb "$@"; }
+
 # Gathered into one annotation, as GitHub keeps only the first ten per step.
 PASSED=""
 note() { PASSED="$PASSED$*; "; }
@@ -75,6 +78,14 @@ tap_until() {
       seen "$2" && return 0
       sleep 2
     done
+  done
+  return 1
+}
+wait_for_boot() {
+  adb wait-for-device
+  for _ in $(seq 1 60); do
+    [ "$(adb shell getprop sys.boot_completed | tr -d '\r\n')" = 1 ] && return 0
+    sleep 3
   done
   return 1
 }
@@ -201,7 +212,7 @@ fi
 adb shell input keyevent KEYCODE_BACK
 if wait_for 'How much are you investing'; then
   note "Back returns to Invest"
-elif [ "$(adb shell getprop ro.build.version.sdk | tr -d '')" -le 30 ]; then
+elif [ "$(adb shell getprop ro.build.version.sdk | tr -d '\r')" -le 30 ]; then
   # Known on Android 11: this Back leaves the app instead. Nothing is lost by it.
   echo "::warning title=android-check::Back left the app instead of returning to Invest"
   adb shell am start -n "$PACKAGE/.MainActivity"
@@ -255,9 +266,7 @@ fi
 shot restarted
 
 adb reboot
-adb wait-for-device
-until [ "$(adb shell getprop sys.boot_completed | tr -d '
-')" = 1 ]; do sleep 3; done
+wait_for_boot || { fail "the device did not come back after a restart"; finish; }
 sleep 10
 adb shell am start -n "$PACKAGE/.MainActivity"
 if wait_for 'How much are you investing'; then
