@@ -8,7 +8,9 @@ FOLDER=/sdcard/Documents/SmokeTest
 mkdir -p android-check
 FAILED=0
 
-note() { echo "::notice title=android-check::$*"; }
+# Gathered into one annotation, as GitHub keeps only the first ten per step.
+PASSED=""
+note() { PASSED="$PASSED$*; "; }
 fail() {
   echo "::error title=android-check::$*"
   FAILED=1
@@ -86,7 +88,7 @@ EOF
 }
 finish() {
   adb logcat -d >android-check/logcat.txt 2>&1
-  [ "$FAILED" = 0 ] && note "all checks passed"
+  echo "::notice title=android-check::$PASSED"
   exit "$FAILED"
 }
 
@@ -114,8 +116,16 @@ shot picker
 if seen "Can.t use this folder"; then
   note "the picker refuses the top of the storage"
 fi
-tap_until 'Documents' 'Use this folder'
-sleep 2
+# Leaving the top of the storage is what shows the tap worked: the button is
+# on screen there as well, just refused.
+for _ in 1 2 3; do
+  tap 'Documents'
+  for _ in 1 2 3 4 5; do
+    seen "Can.t use this folder" || break 2
+    sleep 2
+  done
+done
+sleep 3
 # The picker can miss a folder made from outside, so Documents itself will do too.
 if seen 'SmokeTest'; then
   tap_until 'SmokeTest' 'Use this folder'
@@ -237,8 +247,7 @@ if wait_for 'How much are you investing'; then
 else
   fail "folder forgotten after a device restart: $(texts)"
 fi
-tap 'Portfolio'
-if seen 'NEW'; then
+if tap_until 'Portfolio' 'NEW'; then
   note "portfolio still there after a device restart"
 else
   fail "portfolio gone after a device restart: $(texts)"
