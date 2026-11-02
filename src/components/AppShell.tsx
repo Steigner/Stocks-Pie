@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-import { ThemeToggle } from './ui/ThemeToggle';
 import styles from './AppShell.module.css';
 
 interface NavItem<T extends string> {
@@ -40,12 +39,9 @@ export function AppShell<T extends string>({
             </li>
           ))}
         </ul>
-        <div className={styles.footer}>
-          {locationLabel && (
-            <div className={styles.location}>Saved to: {locationLabel}</div>
-          )}
-          <ThemeToggle />
-        </div>
+        {locationLabel && (
+          <div className={styles.location}>Saved to: {locationLabel}</div>
+        )}
       </nav>
       <main className={styles.content}>
         <div className={styles.contentInner}>{children}</div>

@@ -61,14 +61,8 @@
   color: white;
 }
 
-.footer {
-  margin-top: auto;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
 .location {
+  margin-top: auto;
   font-size: 0.75rem;
   color: var(--color-text-secondary);
   padding: 0 var(--space-2);
@@ -121,11 +115,6 @@
   .brand,
   .location {
     display: none;
-  }
-
-  .footer {
-    margin-top: 0;
-    width: auto;
   }
 
   .navList {

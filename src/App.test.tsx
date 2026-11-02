@@ -329,6 +329,7 @@ describe('App', () => {
     const user = userEvent.setup();
     render(<App store={new InMemoryPortfolioStore(PORTFOLIO)} />);
 
+    await user.click(await screen.findByRole('button', { name: 'Settings' }));
     await user.click(await screen.findByRole('button', { name: 'Dark' }));
 
     expect(document.documentElement).toHaveAttribute('data-theme', 'dark');
@@ -377,7 +378,7 @@ describe('App', () => {
     const store = new FolderStore(true);
     render(<App store={store} />);
 
-    await user.click(await screen.findByRole('button', { name: 'Data location' }));
+    await user.click(await screen.findByRole('button', { name: 'Settings' }));
     await user.click(screen.getByRole('button', { name: 'Change folder' }));
 
     await waitFor(() => expect(store.saved).toEqual([PORTFOLIO]));
@@ -390,7 +391,7 @@ describe('App', () => {
     const store = new FolderStore(false);
     render(<App store={store} />);
 
-    await user.click(await screen.findByRole('button', { name: 'Data location' }));
+    await user.click(await screen.findByRole('button', { name: 'Settings' }));
     await user.click(screen.getByRole('button', { name: 'Change folder' }));
 
     expect(
@@ -398,6 +399,58 @@ describe('App', () => {
     ).toBeInTheDocument();
     expect(store.loads).toBe(1);
     expect(store.saved).toEqual([]);
+  });
+
+  it('saves a new minimum order when the field is left', async () => {
+    const user = userEvent.setup();
+    const store = new InMemoryPortfolioStore(PORTFOLIO);
+    render(<App store={store} />);
+    await user.click(await screen.findByRole('button', { name: 'Settings' }));
+
+    const minOrder = screen.getByLabelText('Minimum order per position (CZK)');
+    await user.clear(minOrder);
+    await user.type(minOrder, '2500');
+
+    expect(store.saved).toEqual([]);
+
+    await user.tab();
+
+    await waitFor(() => expect(store.saved.at(-1)?.minOrder).toBe(2500));
+  });
+
+  it('treats an empty minimum order as 0', async () => {
+    const user = userEvent.setup();
+    const store = new InMemoryPortfolioStore(PORTFOLIO);
+    render(<App store={store} />);
+    await user.click(await screen.findByRole('button', { name: 'Settings' }));
+
+    await user.clear(screen.getByLabelText('Minimum order per position (CZK)'));
+    await user.tab();
+
+    await waitFor(() => expect(store.saved.at(-1)?.minOrder).toBe(0));
+  });
+
+  it('writes nothing when a setting is left unchanged', async () => {
+    const user = userEvent.setup();
+    const store = new InMemoryPortfolioStore(PORTFOLIO);
+    render(<App store={store} />);
+    await user.click(await screen.findByRole('button', { name: 'Settings' }));
+
+    await user.click(screen.getByLabelText('Minimum order per position (CZK)'));
+    await user.tab();
+
+    expect(store.saved).toEqual([]);
+  });
+
+  it('changes the currency at once', async () => {
+    const user = userEvent.setup();
+    const store = new InMemoryPortfolioStore(PORTFOLIO);
+    render(<App store={store} />);
+    await user.click(await screen.findByRole('button', { name: 'Settings' }));
+
+    await user.selectOptions(screen.getByLabelText('Currency'), 'EUR');
+
+    await waitFor(() => expect(store.saved.at(-1)?.currency).toBe('EUR'));
   });
 
   it('lists a round by ticker rather than by company name', async () => {

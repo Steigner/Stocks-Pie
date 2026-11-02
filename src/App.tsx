@@ -6,25 +6,25 @@ import { LinkButton } from './components/ui/Button';
 import { DOWNLOAD_URL } from './download';
 import { PortfolioProvider, usePortfolio } from './state/PortfolioContext';
 import type { PortfolioStore } from './storage';
-import { DataLocationScreen } from './screens/DataLocationScreen';
 import { HistoryScreen } from './screens/HistoryScreen';
 import { InvestScreen } from './screens/InvestScreen';
 import { PortfolioScreen } from './screens/PortfolioScreen';
+import { SettingsScreen } from './screens/SettingsScreen';
 
-type ScreenId = 'invest' | 'portfolio' | 'history' | 'data';
+type ScreenId = 'invest' | 'portfolio' | 'history' | 'settings';
 
 const NAV_ITEMS: ReadonlyArray<{ id: ScreenId; label: string }> = [
   { id: 'invest', label: 'Invest' },
   { id: 'portfolio', label: 'Portfolio' },
   { id: 'history', label: 'History' },
-  { id: 'data', label: 'Data location' },
+  { id: 'settings', label: 'Settings' },
 ];
 
 const SCREENS: Record<ScreenId, () => ReactNode> = {
   invest: () => <InvestScreen />,
   portfolio: () => <PortfolioScreen />,
   history: () => <HistoryScreen />,
-  data: () => <DataLocationScreen />,
+  settings: () => <SettingsScreen />,
 };
 
 function AppContent() {
