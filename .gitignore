@@ -26,8 +26,10 @@ yarn-error.log*
 docs/superpowers/
 .superpowers/
 
-# Desktop app: Rust build output, generated schemas, and icons derived from
-# src-tauri/app-icon.svg
+# The app: Rust build output, generated schemas, icons derived from
+# src-tauri/app-icon.svg, and the Android signing key
 src-tauri/target/
-src-tauri/gen/
+src-tauri/gen/schemas/
 src-tauri/icons/
+src-tauri/gen/android/app/src/main/res/mipmap-*/
+*.jks

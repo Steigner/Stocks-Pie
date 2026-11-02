@@ -6,3 +6,4 @@ src-tauri/target
 docs/superpowers
 # A personal portfolio must never be baked into an image layer.
 data
+src-tauri/gen

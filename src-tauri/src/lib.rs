@@ -6,6 +6,8 @@
 //! passes a path, so even compromised page code could not touch any other file.
 //! How that works differs enough per platform to give each its own module.
 
+#[cfg(target_os = "android")]
+mod android;
 #[cfg(desktop)]
 mod desktop;
 
@@ -14,6 +16,8 @@ pub fn run() {
     let builder = tauri::Builder::default();
     #[cfg(desktop)]
     let builder = desktop::attach(builder);
+    #[cfg(target_os = "android")]
+    let builder = android::attach(builder);
     builder
         .run(tauri::generate_context!())
         .expect("error while running Stocks Pie");
