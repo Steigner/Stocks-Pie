@@ -1,17 +1,21 @@
 .chart {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 15rem);
+  /* Wraps by the room it has, which a media query can't see in a narrow column. */
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: var(--space-4);
   align-items: center;
 }
 
 .donut {
-  width: 100%;
+  flex: 1 1 10rem;
+  min-width: 0;
   max-width: 15rem;
-  justify-self: center;
 }
 
 .legend {
+  flex: 1 1 12rem;
+  min-width: 0;
   list-style: none;
   margin: 0;
   padding: 0;
@@ -42,10 +46,4 @@
 .legendValue {
   color: var(--color-text-secondary);
   font-variant-numeric: tabular-nums;
-}
-
-@media (max-width: 640px) {
-  .chart {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }

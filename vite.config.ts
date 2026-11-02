@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react';
 
 /**
  * The page may load only its own files and may not open any connection.
- * src-tauri/tauri.conf.json carries the same policy for the desktop app, with
+ * src-tauri/tauri.conf.json carries the same policy for the app, with
  * connect-src opened only to Tauri's channel between the page and the Rust side.
  * Keep the two in step.
  */
@@ -20,11 +20,11 @@ const CONTENT_SECURITY_POLICY = [
 ].join('; ');
 
 /**
- * Set by the Tauri CLI while it builds the desktop app. Tauri injects that app's
+ * Set by the Tauri CLI while it builds the app. Tauri injects that app's
  * policy itself, and a second one from the meta tag would also cut the channel
  * between the page and the Rust side.
  */
-const DESKTOP_BUILD = process.env.TAURI_ENV_PLATFORM !== undefined;
+const TAURI_BUILD = process.env.TAURI_ENV_PLATFORM !== undefined;
 
 /** Build only: `connect-src 'none'` would cut the dev server's hot-reload socket. */
 function contentSecurityPolicy(): Plugin {
@@ -49,7 +49,7 @@ function contentSecurityPolicy(): Plugin {
 
 export default defineConfig({
   base: './',
-  plugins: [react(), ...(DESKTOP_BUILD ? [] : [contentSecurityPolicy()])],
+  plugins: [react(), ...(TAURI_BUILD ? [] : [contentSecurityPolicy()])],
   build: {
     // The polyfill preloads modules with fetch(), which the policy forbids.
     modulePreload: { polyfill: false },

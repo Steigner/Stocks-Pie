@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
+import { AllocationDonut } from '../components/charts/AllocationDonut';
 import { DriftChart } from '../components/charts/DriftChart';
 import { Banner } from '../components/ui/Banner';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { InfoTip } from '../components/ui/InfoTip';
 import { Metric } from '../components/ui/Metric';
-import tableStyles from '../components/ui/Table.module.css';
 import { planPurchases, validatePositions } from '../domain/allocation';
 import {
   PortfolioValidationError,
@@ -16,6 +16,29 @@ import {
 import { formatMoney, formatPct, formatSignedPct } from '../format';
 import { usePortfolio } from '../state/PortfolioContext';
 import styles from './InvestScreen.module.css';
+
+function PlanRow({
+  ticker,
+  name,
+  amount,
+  detail,
+}: {
+  ticker: string;
+  name: string;
+  amount: string;
+  detail: string;
+}) {
+  return (
+    <li className={styles.row}>
+      <span className={styles.identity}>
+        <span className={styles.ticker}>{ticker}</span>
+        <span className={styles.name}>{name}</span>
+      </span>
+      <span className={styles.amount}>{amount}</span>
+      <span className={styles.detail}>{detail}</span>
+    </li>
+  );
+}
 
 export function InvestScreen() {
   const { portfolio, confirmRound } = usePortfolio();
@@ -86,7 +109,7 @@ export function InvestScreen() {
 
       <div className={styles.budgetRow}>
         <span className={styles.withTip}>
-          <label htmlFor="budget">How much am I investing now ({currency})</label>
+          <label htmlFor="budget">How much are you investing ({currency})</label>
           <InfoTip label="the deposit">
             The app splits the whole amount to get you as close to your targets as
             possible.
@@ -96,6 +119,7 @@ export function InvestScreen() {
           id="budget"
           className={styles.budgetInput}
           type="number"
+          inputMode="numeric"
           autoComplete="off"
           min={0}
           step={1000}
@@ -116,116 +140,90 @@ export function InvestScreen() {
       )}
 
       {plan && plan.leftover === 0 && (
-        <>
-          <div className={styles.metrics}>
-            <Metric label="Investing" value={formatMoney(plan.invested, currency)} />
-            <Metric label="Positions bought" value={String(orders.length)} />
-            <Metric
-              label="Drift from target"
-              value={formatPct(plan.driftAfterPct)}
-              delta={formatSignedPct(plan.driftAfterPct - plan.driftBeforePct)}
-              deltaDirection={
-                plan.driftAfterPct - plan.driftBeforePct > 0 ? 'up' : 'down'
-              }
-            />
+        <div className={styles.result}>
+          <div className={styles.summary}>
+            <div className={styles.metrics}>
+              <Metric
+                label="Buying"
+                value={`${orders.length} ${orders.length === 1 ? 'position' : 'positions'}`}
+              />
+              <Metric
+                label="Drift"
+                value={formatPct(plan.driftAfterPct)}
+                delta={formatSignedPct(plan.driftAfterPct - plan.driftBeforePct)}
+                deltaDirection={
+                  plan.driftAfterPct - plan.driftBeforePct > 0 ? 'up' : 'down'
+                }
+              />
+            </div>
+            <Card className={styles.after}>
+              <h2 className={styles.sectionTitle}>After this buy</h2>
+              <AllocationDonut
+                label="Portfolio after this buy"
+                positions={plan.positions.map((item) => ({
+                  ...item,
+                  targetPct: item.projectedPct,
+                }))}
+              />
+            </Card>
           </div>
 
-          {orders.length > 0 && (
-            <Card>
-              <h2 className={styles.sectionTitle}>Send these orders</h2>
-              <div className={tableStyles.wrap}>
-                <table className={tableStyles.table}>
-                  <thead>
-                    <tr>
-                      <th>Ticker</th>
-                      <th>Name</th>
-                      <th className={tableStyles.numeric}>Send</th>
-                      <th className={tableStyles.numeric}>Now</th>
-                      <th className={tableStyles.numeric}>After buy</th>
-                      <th className={tableStyles.numeric}>Target</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {orders.map((order) => (
-                      <tr key={order.ticker}>
-                        <td>{order.ticker}</td>
-                        <td>{order.name}</td>
-                        <td className={tableStyles.numeric}>
-                          {formatMoney(order.buy, currency)}
-                        </td>
-                        <td className={tableStyles.numeric}>
-                          {formatPct(order.currentPct)}
-                        </td>
-                        <td className={tableStyles.numeric}>
-                          {formatPct(order.projectedPct)}
-                        </td>
-                        <td className={tableStyles.numeric}>
-                          {formatPct(order.targetPct)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </Card>
-          )}
+          <div className={styles.details}>
+            {orders.length > 0 && (
+              <Card>
+                <h2 className={styles.sectionTitle}>Send these orders</h2>
+                <ul className={styles.rows}>
+                  {orders.map((order) => (
+                    <PlanRow
+                      key={order.ticker}
+                      ticker={order.ticker}
+                      name={order.name}
+                      amount={formatMoney(order.buy, currency)}
+                      detail={`${formatPct(order.currentPct)} to ${formatPct(order.projectedPct)}, target ${order.targetPct}%`}
+                    />
+                  ))}
+                </ul>
+              </Card>
+            )}
 
-          {skipped.length > 0 && (
-            <Card>
-              <h2 className={styles.sectionTitle}>Skip these this time</h2>
-              <p>
-                These are on target already, or a{' '}
-                {formatMoney(portfolio.minOrder, currency)} order would overshoot them.
-                They go first next time.
-              </p>
-              <div className={tableStyles.wrap}>
-                <table className={tableStyles.table}>
-                  <thead>
-                    <tr>
-                      <th>Ticker</th>
-                      <th>Name</th>
-                      <th className={tableStyles.numeric}>Holding</th>
-                      <th className={tableStyles.numeric}>Now</th>
-                      <th className={tableStyles.numeric}>Target</th>
-                      <th className={tableStyles.numeric}>Gap</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+            {skipped.length > 0 && (
+              <Card>
+                <details className={styles.fold}>
+                  <summary>Skipped this time ({skipped.length})</summary>
+                  <p className={styles.foldText}>
+                    These are on target already, or a{' '}
+                    {formatMoney(portfolio.minOrder, currency)} order would overshoot
+                    them. They go first next time.
+                  </p>
+                  <ul className={styles.rows}>
                     {skipped.map((item) => (
-                      <tr key={item.ticker}>
-                        <td>{item.ticker}</td>
-                        <td>{item.name}</td>
-                        <td className={tableStyles.numeric}>
-                          {formatMoney(item.holding, currency)}
-                        </td>
-                        <td className={tableStyles.numeric}>
-                          {formatPct(item.currentPct)}
-                        </td>
-                        <td className={tableStyles.numeric}>
-                          {formatPct(item.targetPct)}
-                        </td>
-                        <td className={tableStyles.numeric}>
-                          {formatSignedPct(gapPct(item))}
-                        </td>
-                      </tr>
+                      <PlanRow
+                        key={item.ticker}
+                        ticker={item.ticker}
+                        name={item.name}
+                        amount={formatMoney(item.holding, currency)}
+                        detail={`${formatPct(item.currentPct)} now, target ${item.targetPct}%, ${formatSignedPct(gapPct(item))}`}
+                      />
                     ))}
-                  </tbody>
-                </table>
-              </div>
+                  </ul>
+                </details>
+              </Card>
+            )}
+
+            <Card>
+              <details className={styles.fold}>
+                <summary>How the portfolio moves</summary>
+                <DriftChart plan={plan} />
+              </details>
             </Card>
-          )}
 
-          <Card>
-            <details className={styles.details}>
-              <summary>How the portfolio moves</summary>
-              <DriftChart plan={plan} />
-            </details>
-          </Card>
-
-          <Button variant="primary" onClick={handleConfirm}>
-            I&apos;ve placed the orders, record this round
-          </Button>
-        </>
+            <div className={styles.confirm}>
+              <Button variant="primary" fullWidth onClick={handleConfirm}>
+                I&apos;ve placed the orders
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

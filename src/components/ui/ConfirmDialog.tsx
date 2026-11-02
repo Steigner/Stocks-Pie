@@ -1,10 +1,12 @@
 import { useEffect, type ReactNode } from 'react';
+import { useBackHandler } from '../../useBackHandler';
 import { Button } from './Button';
 import styles from './ConfirmDialog.module.css';
 
 interface ConfirmDialogProps {
   title: string;
   children: ReactNode;
+  confirmLabel?: string;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -12,9 +14,12 @@ interface ConfirmDialogProps {
 export function ConfirmDialog({
   title,
   children,
+  confirmLabel = 'Delete',
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
+  useBackHandler(true, onCancel);
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -43,7 +48,7 @@ export function ConfirmDialog({
             Cancel
           </Button>
           <Button variant="danger" onClick={onConfirm}>
-            Delete
+            {confirmLabel}
           </Button>
         </div>
       </div>

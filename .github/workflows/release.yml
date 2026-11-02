@@ -1,13 +1,15 @@
 name: Release
 
-# Builds the desktop installers when a version tag is pushed:
+# Builds the installers and the Android APK when a version tag is pushed:
 #   git tag v1.0.0 && git push origin v1.0.0
 # Keep the tag in step with "version" in package.json - the installers take
-# their version number from there. Code signing switches itself on once the
-# secrets and variables used by the signing steps below exist.
+# their version number from there. Desktop code signing switches itself on once
+# the secrets and variables used by the signing steps below exist. A manual run
+# builds only the APK and keeps it as a workflow artifact.
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
 
 permissions:
   # Creates the draft GitHub Release and uploads the installers to it.
@@ -15,6 +17,7 @@ permissions:
 
 jobs:
   desktop:
+    if: startsWith(github.ref, 'refs/tags/')
     strategy:
       fail-fast: false
       matrix:
@@ -109,3 +112,134 @@ jobs:
           releaseBody: See "Download" in the README for what to expect on first launch.
           releaseDraft: true
           args: ${{ matrix.args }} ${{ env.SIGNING_ARGS }}
+
+  android:
+    # After the desktop jobs, which create the draft release, whatever they did.
+    needs: desktop
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    env:
+      NDK_VERSION: 27.2.12479018
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android
+
+      - name: Install the Android NDK
+        run: |
+          # The download fails now and then, and a failure here costs a whole release.
+          for attempt in 1 2 3; do
+            "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;$NDK_VERSION" && break
+            [ "$attempt" = 3 ] && exit 1
+            sleep 30
+          done
+          echo "NDK_HOME=$ANDROID_HOME/ndk/$NDK_VERSION" >> "$GITHUB_ENV"
+
+      - run: npm ci
+
+      # Only the SVG source is committed; every size and format is derived from it.
+      - name: Generate app icons
+        run: npx tauri icon src-tauri/app-icon.svg
+
+      # Android refuses to install an unsigned APK, and a throwaway key would make
+      # every update a reinstall, so a build without the real key stops here.
+      - name: Prepare Android signing
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KEYSTORE_PASSWORD" ] || [ -z "$KEY_ALIAS" ]; then
+            echo "::error::Android signing secrets are missing. See the README."
+            exit 1
+          fi
+          echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.jks"
+          {
+            echo "keyAlias=$KEY_ALIAS"
+            echo "password=$KEYSTORE_PASSWORD"
+            echo "storeFile=$RUNNER_TEMP/release.jks"
+          } > src-tauri/gen/android/keystore.properties
+
+      - name: Build the APK
+        run: |
+          npx tauri android build --apk --target aarch64 armv7 x86_64
+          version=$(node -p "require('./package.json').version")
+          mv src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk             "Stocks-Pie_${version}_android.apk"
+
+      - name: Keep the APK with this run
+        uses: actions/upload-artifact@v7
+        with:
+          name: stocks-pie-android
+          path: Stocks-Pie_*_android.apk
+
+  # Nothing else tries the app on Android, so a release waits for this to pass.
+  android-check:
+    needs: android
+    if: ${{ !cancelled() && needs.android.result == 'success' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: phone-android-16
+            api-level: 36
+            profile: pixel_7
+          - name: phone-android-11
+            api-level: 30
+            profile: pixel_4
+          - name: tablet-android-16
+            api-level: 36
+            profile: pixel_tablet
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: stocks-pie-android
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      # A normal run takes under ten minutes. A stuck one fails here, and the
+      # screenshots below are still kept.
+      - uses: reactivecircus/android-emulator-runner@v2
+        timeout-minutes: 25
+        with:
+          api-level: ${{ matrix.api-level }}
+          profile: ${{ matrix.profile }}
+          target: google_apis
+          arch: x86_64
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          script: bash .github/android-check.sh Stocks-Pie_*_android.apk
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: android-check-${{ matrix.name }}
+          path: android-check
+
+  android-publish:
+    needs: android-check
+    if: ${{ !cancelled() && needs.android-check.result == 'success' && startsWith(github.ref, 'refs/tags/') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: stocks-pie-android
+      - name: Publish the APK
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release view "$TAG" > /dev/null 2>&1 || gh release create "$TAG" --draft             --title "Stocks Pie $TAG"             --notes 'See "Download" in the README for what to expect on first launch.'
+          gh release upload "$TAG" Stocks-Pie_*_android.apk --clobber

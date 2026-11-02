@@ -34,21 +34,134 @@
   margin-bottom: var(--space-2);
 }
 
-.details summary {
+.result,
+.summary,
+.details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* On a phone the rows already say where each position ends up, and the chart
+   would push them off the screen. */
+.after {
+  display: none;
+}
+
+.rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px var(--space-3);
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.row:first-child {
+  border-top: none;
+}
+
+.identity {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--space-2);
+  min-width: 0;
+}
+
+.ticker {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.name {
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+.amount {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.detail {
+  grid-column: 1 / -1;
+  color: var(--color-text-secondary);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.fold summary {
   cursor: pointer;
   font-weight: 600;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
   padding: var(--space-2);
   margin: calc(var(--space-2) * -1);
   border-radius: var(--radius-sm);
   transition: background 0.15s ease;
 }
 
-.details summary:hover {
-  background: var(--color-bg-subtle);
+@media (hover: hover) {
+  .fold summary:hover {
+    background: var(--color-bg-subtle);
+  }
+}
+
+.fold[open] summary {
+  margin-bottom: var(--space-2);
+}
+
+.foldText {
+  font-size: 0.85rem;
 }
 
 .withTip {
   display: flex;
   align-items: center;
   gap: var(--space-2);
+}
+
+/* Stays in reach on a tall phone, but on a short screen it would cover the rows. */
+@media (max-width: 767px) and (min-height: 600px) {
+  .confirm {
+    position: sticky;
+    bottom: calc(var(--nav-bar-height) + env(safe-area-inset-bottom));
+    z-index: 10;
+    /* A solid strip, or the rows scrolling behind would show around the button. */
+    margin: 0 calc(var(--space-4) * -1);
+    padding: var(--space-2) var(--space-4);
+    background: var(--color-bg);
+  }
+}
+
+@media (min-width: 900px) and (min-height: 500px) {
+  .result {
+    display: grid;
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+    align-items: start;
+    gap: var(--space-4);
+  }
+
+  .summary {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .details {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .after {
+    display: block;
+  }
 }

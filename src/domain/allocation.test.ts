@@ -4,7 +4,9 @@ import {
   evaluate,
   planPurchases,
   splitAmount,
+  targetsAddUp,
   trackingError,
+  validatePosition,
   validatePositions,
   waterFill,
   type Problem,
@@ -286,6 +288,46 @@ describe('driftPct', () => {
     expect(driftPct([50.0, 50.0], [7_000.0, 3_000.0])).toBeCloseTo(20.0);
     expect(driftPct([50.0, 50.0], [5_000.0, 5_000.0])).toBeCloseTo(0.0);
     expect(driftPct([50.0, 50.0], [0.0, 0.0])).toBe(0.0);
+  });
+});
+
+describe('validatePosition', () => {
+  const OTHERS: readonly Position[] = [
+    { name: '', ticker: 'AAA', targetPct: 200, holding: 0 },
+  ];
+
+  it('accepts a good position even when the total is not 100', () => {
+    const position = { name: '', ticker: 'BBB', targetPct: 10, holding: 0 };
+
+    expect(() => validatePosition(position, OTHERS)).not.toThrow();
+  });
+
+  it.each([
+    [{ ticker: ' ', targetPct: 10, holding: 0 }, 'Every position needs a ticker.'],
+    [
+      { ticker: 'AAA', targetPct: 10, holding: 0 },
+      'Each ticker can only be used once.',
+    ],
+    [
+      { ticker: 'BBB', targetPct: 0, holding: 0 },
+      'Every target needs to be more than 0%.',
+    ],
+    [{ ticker: 'BBB', targetPct: 10, holding: -1 }, "A holding can't be negative."],
+  ])('rejects %o', (fields, message) => {
+    const position = { name: '', ...fields };
+
+    expect(() => validatePosition(position, OTHERS)).toThrow(message);
+  });
+});
+
+describe('targetsAddUp', () => {
+  const atTarget = (targetPct: number): readonly Position[] => [
+    { name: '', ticker: 'A', targetPct, holding: 0 },
+  ];
+
+  it('uses the same tolerance as validatePositions', () => {
+    expect(targetsAddUp(atTarget(100.005))).toBe(true);
+    expect(targetsAddUp(atTarget(99))).toBe(false);
   });
 });
 

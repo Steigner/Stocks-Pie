@@ -1,0 +1,93 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: flex-end;
+  z-index: 100;
+}
+
+.dialog {
+  background: var(--color-bg-elevated);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  box-shadow: var(--shadow-md);
+  padding: var(--space-5) var(--space-4);
+  padding-bottom: max(var(--space-4), env(safe-area-inset-bottom));
+  width: 100%;
+  /* The keyboard shrinks the page, so the form has to scroll inside what is left. */
+  max-height: 100%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.dialog:focus {
+  outline: none;
+}
+
+.title {
+  font-size: 1.25rem;
+  overflow-wrap: anywhere;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.field label {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+}
+
+.input {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-elevated);
+  color: var(--color-text-primary);
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.actions > * {
+  flex: 1;
+}
+
+@media (min-width: 768px) and (min-height: 500px) {
+  .backdrop {
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-4);
+  }
+
+  .dialog {
+    border-radius: var(--radius-lg);
+    padding: var(--space-5);
+    max-width: 420px;
+  }
+}

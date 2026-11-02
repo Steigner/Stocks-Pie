@@ -8,24 +8,32 @@ contributors.
 
 - **React + TypeScript**, built with **Vite**, into one static bundle that
   serves two purposes:
-  - the **desktop app** ([src-tauri/](src-tauri/)), which wraps the bundle with
-    **Tauri** and is where real data lives, and
+  - the **app** for desktop and Android ([src-tauri/](src-tauri/)), which wraps the
+    bundle with **Tauri** and is where real data lives, and
   - the **web preview** on GitHub Pages, which opens on
     [a sample portfolio](src/domain/samplePortfolio.ts) and saves nothing.
 - Persistence is chosen in [src/storage/index.ts](src/storage/index.ts): the
-  Tauri store in the desktop app, an in-memory store in the browser. The desktop
-  app's Rust commands are its only file access - they hold the folder the user
-  picked and touch nothing but `portfolio.json` in it. Never hand the page a path,
-  and never add Tauri plugins that reach the network or the wider file system
-  (`http`, `updater`, `shell`, `fs`).
+  Tauri store in the app, an in-memory store in the browser. The app's four Rust
+  commands are its only file access - they hold the folder the user picked and
+  touch nothing but `portfolio.json` in it. Android cannot use plain file access,
+  so there they go through `FolderPlugin.kt`, which the page has no permission to
+  call. Never hand the page a path, and never add Tauri plugins that reach the
+  network or the wider file system (`http`, `updater`, `shell`, `fs`).
 - No network I/O of any kind. The Content-Security-Policy in
   [vite.config.ts](vite.config.ts) and its twin in `src-tauri/tauri.conf.json`
-  set `connect-src` to nothing but Tauri's own channel; keep the two in step.
+  set `connect-src` to nothing but Tauri's own channel; keep the two in step. An
+  Android release build also has no `INTERNET` permission: it stays in the debug
+  manifest only, for the dev server.
 - Checked and built locally in **Docker** (see [Dockerfile](Dockerfile)) - do
   not assume Node.js is installed on the host. CI runs the same npm scripts on
   Node 24; [.github/workflows/ci.yml](.github/workflows/ci.yml) publishes the preview;
   [.github/workflows/release.yml](.github/workflows/release.yml) builds the
-  installers from a version tag.
+  installers and the APK from a version tag, and publishes the APK only after
+  [.github/android-check.sh](.github/android-check.sh) passes on emulators. That
+  check is the only test on Android, so extend it when Android behaviour changes.
+- `src-tauri/gen/android` is committed, because it holds hand edits: the manifest,
+  `MainActivity.kt`, `FolderPlugin.kt` and the signing config. Regenerating it with
+  `tauri android init` overwrites them. Only `gen/schemas` stays out of git.
 - A position is identified by its **ticker**, never its name: rounds key their
   buys by ticker, and tickers must be unique. A change to the `portfolio.json`
   layout bumps `FILE_VERSION` in
@@ -37,7 +45,8 @@ contributors.
   [src/domain/portfolio.ts](src/domain/portfolio.ts): CZK and a minimum order of
   5,000.
 - Only `src-tauri/app-icon.svg` is committed; `npx tauri icon` derives every
-  other icon, locally and in the release workflow.
+  other icon, locally and in the release workflow. Android's launcher icons land in
+  `gen/android` and stay out of git.
 - All UI text, code, comments, and commit messages are in **English**.
 
 ## Core Principles
@@ -86,8 +95,9 @@ contributors.
 - Co-locate a component's styles as a CSS Module (`Name.module.css`) next to
   `Name.tsx`. No inline `style={}` objects - the Content-Security-Policy does not
   allow them - and no global class soup.
-- Every screen works from a 360px-wide phone to a full desktop window, and in
-  the desktop app at any display scaling.
+- Every screen works from a 360px-wide phone to a full desktop window, on its side,
+  with the keyboard open, and at any display scaling. Touch targets are at least
+  44px.
 - State that needs to survive a screen switch lives in
   [src/state/PortfolioContext.tsx](src/state/PortfolioContext.tsx); local
   UI-only state (an open dialog, a draft form value) stays in the

@@ -1,244 +1,137 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { AllocationDonut } from '../components/charts/AllocationDonut';
+import { TargetBar } from '../components/charts/TargetBar';
+import { PositionEditor } from '../components/PositionEditor';
 import { Banner } from '../components/ui/Banner';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { InfoTip } from '../components/ui/InfoTip';
-import { validatePositions } from '../domain/allocation';
-import { CURRENCY_CHOICES } from '../domain/currencies';
-import { DEFAULT_CURRENCY, normalizeTargets } from '../domain/portfolio';
-import { PortfolioValidationError, type Position } from '../domain/types';
+import { targetsAddUp } from '../domain/allocation';
+import { normalizeTargets } from '../domain/portfolio';
+import type { Position } from '../domain/types';
 import { formatMoney, formatPct } from '../format';
-import { generateId } from '../id';
 import { usePortfolio } from '../state/PortfolioContext';
 import styles from './PortfolioScreen.module.css';
 
-const SAVED_NOTICE_MS = 4_000;
+/** A row's place in the list, or a position that does not exist yet. */
+type Editing = number | 'new';
 
-interface DraftRow {
-  id: string;
-  ticker: string;
-  name: string;
-  holding: number;
-  targetPct: number;
-}
-
-function blankRow(): DraftRow {
-  return { id: generateId(), ticker: '', name: '', holding: 0, targetPct: 0 };
-}
-
-function toDraftRows(positions: readonly Position[]): DraftRow[] {
-  if (positions.length === 0) {
-    return [blankRow()];
-  }
-  return positions.map((position) => ({ id: generateId(), ...position }));
-}
-
-function toPositions(rows: readonly DraftRow[]): Position[] {
-  return rows
-    .filter((row) => row.ticker.trim() !== '' || row.name.trim() !== '')
-    .map((row) => ({
-      ticker: row.ticker.trim(),
-      name: row.name.trim(),
-      targetPct: row.targetPct,
-      holding: Math.trunc(row.holding),
-    }));
+function positionLabel(position: Position): string {
+  return position.ticker || position.name || 'position';
 }
 
 export function PortfolioScreen() {
   const { portfolio, savePositions } = usePortfolio();
-  const [rows, setRows] = useState<DraftRow[]>(() =>
-    toDraftRows(portfolio?.positions ?? []),
-  );
-  const [minOrder, setMinOrder] = useState(portfolio?.minOrder ?? 0);
-  const [currency, setCurrency] = useState(portfolio?.currency ?? DEFAULT_CURRENCY);
-  const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
-
-  useEffect(() => {
-    if (!saved) {
-      return;
-    }
-    const timer = setTimeout(() => setSaved(false), SAVED_NOTICE_MS);
-    return () => clearTimeout(timer);
-  }, [saved]);
+  const [editing, setEditing] = useState<Editing | null>(null);
+  const [removing, setRemoving] = useState(false);
 
   if (!portfolio) {
     return null;
   }
 
-  const touched = () => setSaved(false);
+  const { positions, currency, minOrder } = portfolio;
+  const save = (next: readonly Position[]) => savePositions(next, minOrder, currency);
 
-  const updateRow = (id: string, patch: Partial<DraftRow>) => {
-    setRows((current) =>
-      current.map((row) => (row.id === id ? { ...row, ...patch } : row)),
+  const totalHolding = positions.reduce((total, item) => total + item.holding, 0);
+  const totalPct = positions.reduce((total, item) => total + item.targetPct, 0);
+  const editingPosition = typeof editing === 'number' ? positions[editing] : undefined;
+
+  const closeEditor = () => {
+    setEditing(null);
+    setRemoving(false);
+  };
+
+  const handleSave = (edited: Position) => {
+    save(
+      editing === 'new'
+        ? [...positions, edited]
+        : positions.map((item, index) => (index === editing ? edited : item)),
     );
-    touched();
+    closeEditor();
   };
 
-  const removeRow = (id: string) => {
-    setRows((current) => {
-      const remaining = current.filter((row) => row.id !== id);
-      return remaining.length > 0 ? remaining : [blankRow()];
-    });
-    touched();
+  const handleRemove = () => {
+    save(positions.filter((_item, index) => index !== editing));
+    closeEditor();
   };
-
-  const addRow = () => setRows((current) => [...current, blankRow()]);
-
-  const positions = toPositions(rows);
-  const totalPct = rows.reduce((total, row) => total + row.targetPct, 0);
-  const totalHolding = rows.reduce((total, row) => total + row.holding, 0);
-  const targetsAddUp = Math.round(totalPct * 100) / 100 === 100;
-  // A file may carry any ISO code, not just the offered ones; without its own
-  // option the select would show the wrong currency.
-  const currencyChoices: readonly string[] = (
-    CURRENCY_CHOICES as readonly string[]
-  ).includes(currency)
-    ? CURRENCY_CHOICES
-    : [currency, ...CURRENCY_CHOICES];
-
-  const commit = (edited: Position[]) => {
-    try {
-      validatePositions(edited);
-    } catch (validationError) {
-      if (validationError instanceof PortfolioValidationError) {
-        setError(validationError.message);
-        setSaved(false);
-        return;
-      }
-      throw validationError;
-    }
-    savePositions(edited, minOrder, currency);
-    setRows(toDraftRows(edited));
-    setError(null);
-    setSaved(true);
-  };
-
-  const handleSave = () => commit(positions);
-  const handleNormalizeAndSave = () => commit(normalizeTargets(positions));
 
   return (
     <div className={styles.screen}>
-      <div className={styles.withTip}>
-        <h1>Portfolio</h1>
-        <InfoTip label="the portfolio table">
-          Enter what you hold and the share you want for each. Targets must add up to
-          100%.
-        </InfoTip>
+      <div className={styles.heading}>
+        <div className={styles.withTip}>
+          <h1>Portfolio</h1>
+          <InfoTip label="the portfolio list">
+            Enter what you hold and the share you want for each. Targets must add up to
+            100%.
+          </InfoTip>
+        </div>
+        <span className={styles.total}>{formatMoney(totalHolding, currency)}</span>
       </div>
 
-      {error && <Banner tone="error">Not saved yet. {error}</Banner>}
-      {saved && !error && <Banner tone="success">Portfolio saved.</Banner>}
+      {positions.length > 0 && !targetsAddUp(positions) && (
+        <Banner
+          tone="warning"
+          action={
+            <Button
+              variant="secondary"
+              onClick={() => save(normalizeTargets(positions))}
+            >
+              Make them 100%
+            </Button>
+          }
+        >
+          Targets add up to {formatPct(totalPct)}, not 100%.
+        </Banner>
+      )}
 
       <Card>
-        <div className={styles.rows}>
-          <div className={styles.headerRow}>
-            <span>Ticker</span>
-            <span>Name</span>
-            <span>Holding ({currency})</span>
-            <span>Target %</span>
-            <span />
-          </div>
-          {rows.map((row) => (
-            <div className={styles.row} key={row.id}>
-              <span className={styles.field}>
-                <span className={styles.fieldLabel} aria-hidden="true">
-                  Ticker
-                </span>
-                <input
-                  className={styles.input}
-                  aria-label="Ticker"
-                  placeholder="e.g. AAPL"
-                  autoComplete="off"
-                  spellCheck={false}
-                  value={row.ticker}
-                  onChange={(event) =>
-                    updateRow(row.id, { ticker: event.target.value })
-                  }
-                />
-              </span>
-              <span className={styles.field}>
-                <span className={styles.fieldLabel} aria-hidden="true">
-                  Name
-                </span>
-                <input
-                  className={styles.input}
-                  aria-label="Position name"
-                  placeholder="Optional"
-                  autoComplete="off"
-                  // Enhanced spell check in Chrome and Edge sends the text to a cloud service.
-                  spellCheck={false}
-                  value={row.name}
-                  onChange={(event) => updateRow(row.id, { name: event.target.value })}
-                />
-              </span>
-              <span className={styles.field}>
-                <span className={styles.fieldLabel} aria-hidden="true">
-                  Holding ({currency})
-                </span>
-                <input
-                  className={styles.input}
-                  aria-label={`Holding in ${currency}`}
-                  type="number"
-                  autoComplete="off"
-                  min={0}
-                  step={1000}
-                  value={row.holding}
-                  onChange={(event) =>
-                    updateRow(row.id, { holding: event.target.valueAsNumber || 0 })
-                  }
-                />
-              </span>
-              <span className={styles.field}>
-                <span className={styles.fieldLabel} aria-hidden="true">
-                  Target %
-                </span>
-                <input
-                  className={styles.input}
-                  aria-label="Target percent"
-                  type="number"
-                  autoComplete="off"
-                  min={0}
-                  max={100}
-                  step={0.5}
-                  value={row.targetPct}
-                  onChange={(event) =>
-                    updateRow(row.id, { targetPct: event.target.valueAsNumber || 0 })
-                  }
-                />
-              </span>
-              <button
-                type="button"
-                className={styles.removeButton}
-                aria-label={`Remove ${row.ticker || row.name || 'position'}`}
-                onClick={() => removeRow(row.id)}
-              >
-                &times;
-              </button>
-            </div>
-          ))}
-        </div>
-        <Button variant="secondary" onClick={addRow} className={styles.addButton}>
+        {positions.length === 0 ? (
+          <p>No positions yet.</p>
+        ) : (
+          // Keyed by place: a file edited by hand can hold a blank or repeated ticker.
+          <ul className={styles.list}>
+            {positions.map((position, index) => {
+              const share =
+                totalHolding > 0 ? (position.holding / totalHolding) * 100 : 0;
+              return (
+                <li key={index}>
+                  <button
+                    type="button"
+                    className={styles.row}
+                    aria-label={`Edit ${positionLabel(position)}`}
+                    onClick={() => setEditing(index)}
+                  >
+                    <span className={styles.rowLine}>
+                      <span className={styles.identity}>
+                        <span className={styles.ticker}>{position.ticker}</span>
+                        <span className={styles.name}>{position.name}</span>
+                      </span>
+                      <span className={styles.holding}>
+                        {formatMoney(position.holding, currency)}
+                      </span>
+                    </span>
+                    <span className={styles.rowLine}>
+                      <span className={styles.detail}>{formatPct(share)} now</span>
+                      <span className={styles.detail}>
+                        target {formatPct(position.targetPct)}
+                      </span>
+                    </span>
+                    <TargetBar currentPct={share} targetPct={position.targetPct} />
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        <Button
+          variant="secondary"
+          fullWidth
+          className={styles.addButton}
+          onClick={() => setEditing('new')}
+        >
           Add position
         </Button>
-        <div className={styles.totals}>
-          <span>
-            Holdings{' '}
-            <span className={styles.totalValue}>
-              {formatMoney(totalHolding, currency)}
-            </span>
-          </span>
-          <span>
-            Targets{' '}
-            <span
-              className={`${styles.totalValue} ${targetsAddUp ? '' : styles.totalOff}`}
-            >
-              {formatPct(totalPct)}
-            </span>
-            {!targetsAddUp && ' (must be 100%)'}
-          </span>
-        </div>
       </Card>
 
       {positions.length > 0 && (
@@ -247,62 +140,27 @@ export function PortfolioScreen() {
         </Card>
       )}
 
-      <Card className={styles.settings}>
-        <span className={styles.field}>
-          <span className={styles.withTip}>
-            <label htmlFor="currency">Currency</label>
-            <InfoTip label="the currency setting">
-              Just a label. The app never converts amounts.
-            </InfoTip>
-          </span>
-          <select
-            id="currency"
-            className={`${styles.input} ${styles.settingsInput}`}
-            value={currency}
-            onChange={(event) => {
-              setCurrency(event.target.value);
-              touched();
-            }}
-          >
-            {currencyChoices.map((code) => (
-              <option key={code} value={code}>
-                {code}
-              </option>
-            ))}
-          </select>
-        </span>
-        <span className={styles.field}>
-          <span className={styles.withTip}>
-            <label htmlFor="min-order">Minimum order per position ({currency})</label>
-            <InfoTip label="the minimum order">
-              The smallest order worth paying your broker&apos;s fee for. Use 0 if the
-              fee is just a percentage.
-            </InfoTip>
-          </span>
-          <input
-            id="min-order"
-            className={`${styles.input} ${styles.settingsInput}`}
-            type="number"
-            autoComplete="off"
-            min={0}
-            step={500}
-            value={minOrder}
-            onChange={(event) => {
-              setMinOrder(Math.max(0, event.target.valueAsNumber || 0));
-              touched();
-            }}
-          />
-        </span>
-      </Card>
+      {editing !== null && (
+        <PositionEditor
+          position={editingPosition ?? null}
+          others={positions.filter((_item, index) => index !== editing)}
+          currency={currency}
+          onSave={handleSave}
+          onRemove={editingPosition ? () => setRemoving(true) : undefined}
+          onClose={closeEditor}
+        />
+      )}
 
-      <div className={styles.footerActions}>
-        <Button variant="secondary" onClick={handleNormalizeAndSave}>
-          Normalize to 100% &amp; save
-        </Button>
-        <Button variant="primary" onClick={handleSave}>
-          Save portfolio
-        </Button>
-      </div>
+      {removing && editingPosition && (
+        <ConfirmDialog
+          title={`Remove ${positionLabel(editingPosition)}?`}
+          confirmLabel="Remove"
+          onCancel={() => setRemoving(false)}
+          onConfirm={handleRemove}
+        >
+          It leaves your portfolio. Your history stays.
+        </ConfirmDialog>
+      )}
     </div>
   );
 }

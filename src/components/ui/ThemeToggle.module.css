@@ -12,8 +12,9 @@
   border: none;
   background: none;
   border-radius: 6px;
+  min-height: 44px;
   padding: 5px 4px;
-  font-size: 0.72rem;
+  font-size: 0.85rem;
   font-weight: 500;
   color: var(--color-text-secondary);
   cursor: pointer;
@@ -22,12 +23,13 @@
     color 0.15s ease;
 }
 
-.option:hover {
-  color: var(--color-text-primary);
+@media (hover: hover) {
+  .option:hover {
+    color: var(--color-text-primary);
+  }
 }
 
-.optionActive,
-.optionActive:hover {
+.optionActive {
   background: var(--color-bg-elevated);
   color: var(--color-text-primary);
   box-shadow: var(--shadow-sm);

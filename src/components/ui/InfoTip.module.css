@@ -5,6 +5,7 @@
 }
 
 .marker {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -25,7 +26,20 @@
     color 0.15s ease;
 }
 
-.marker:hover,
+/* Too small to hit with a finger, so the press area reaches past the drawn circle. */
+.marker::before {
+  content: '';
+  position: absolute;
+  inset: -0.8rem;
+}
+
+@media (hover: hover) {
+  .marker:hover {
+    background: var(--color-bg-subtle-strong);
+    color: var(--color-text-primary);
+  }
+}
+
 .marker[aria-expanded='true'] {
   background: var(--color-bg-subtle-strong);
   color: var(--color-text-primary);

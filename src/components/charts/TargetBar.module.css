@@ -1,0 +1,19 @@
+.bar {
+  display: block;
+  width: 100%;
+  height: 6px;
+  /* Lets the target mark stand a little taller than the bar. */
+  overflow: visible;
+}
+
+.track {
+  fill: var(--color-bg-subtle-strong);
+}
+
+.fill {
+  fill: var(--color-accent);
+}
+
+.mark {
+  fill: var(--color-text-primary);
+}
