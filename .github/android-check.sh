@@ -1,30 +1,30 @@
 #!/usr/bin/env bash
-# Temporary check of a built APK on an emulator: picks a folder, edits a position,
-# and tries the keyboard, Back and a restart. Results show up as run annotations.
+# Tries a built APK on an emulator: picks a folder, edits a position, and tries the
+# keyboard, Back, rotation, large text and restarts. Results show up as annotations.
 set -u
 APK=$1
 PACKAGE=com.github.steigner.stockspie
 FOLDER=/sdcard/Documents/SmokeTest
-mkdir -p smoke
+mkdir -p android-check
 FAILED=0
 
-note() { echo "::notice title=smoke::$*"; }
+note() { echo "::notice title=android-check::$*"; }
 fail() {
-  echo "::error title=smoke::$*"
+  echo "::error title=android-check::$*"
   FAILED=1
 }
 dump() {
   adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1
-  adb pull /sdcard/ui.xml smoke/ui.xml >/dev/null 2>&1
+  adb pull /sdcard/ui.xml android-check/ui.xml >/dev/null 2>&1
 }
 shot() {
-  adb exec-out screencap -p >"smoke/$1.png"
+  adb exec-out screencap -p >"android-check/$1.png"
   dump
-  cp smoke/ui.xml "smoke/$1.xml"
+  cp android-check/ui.xml "android-check/$1.xml"
 }
 seen() {
   dump
-  grep -qi -- "$1" smoke/ui.xml
+  grep -qi -- "$1" android-check/ui.xml
 }
 wait_for() {
   for _ in $(seq 1 20); do
@@ -36,7 +36,7 @@ wait_for() {
 texts() {
   python3 - <<'EOF'
 import re
-print(sorted(set(re.findall(r'(?:text|content-desc)="([^"]+)"', open('smoke/ui.xml').read())))[:30])
+print(sorted(set(re.findall(r'(?:text|content-desc)="([^"]+)"', open('android-check/ui.xml').read())))[:30])
 EOF
 }
 tap() {
@@ -46,7 +46,7 @@ tap() {
 import os, re
 import xml.etree.ElementTree as ET
 wanted = os.environ['WANTED'].lower()
-for node in ET.parse('smoke/ui.xml').iter('node'):
+for node in ET.parse('android-check/ui.xml').iter('node'):
     label = (node.get('text') or node.get('content-desc') or '').strip().lower()
     if label == wanted:
         a, b, c, d = map(int, re.findall(r'\d+', node.get('bounds')))
@@ -55,7 +55,7 @@ for node in ET.parse('smoke/ui.xml').iter('node'):
 EOF
   )
   if [ -z "$point" ]; then
-    echo "::warning title=smoke::no '$1' on screen: $(texts)"
+    echo "::warning title=android-check::no '$1' on screen: $(texts)"
     return 1
   fi
   # shellcheck disable=SC2086
@@ -66,14 +66,14 @@ webview_bounds() {
   dump
   python3 - <<'EOF'
 import xml.etree.ElementTree as ET
-for node in ET.parse('smoke/ui.xml').iter('node'):
+for node in ET.parse('android-check/ui.xml').iter('node'):
     if node.get('class') == 'android.webkit.WebView':
         print(node.get('bounds'))
         break
 EOF
 }
 finish() {
-  adb logcat -d >smoke/logcat.txt 2>&1
+  adb logcat -d >android-check/logcat.txt 2>&1
   [ "$FAILED" = 0 ] && note "all checks passed"
   exit "$FAILED"
 }
@@ -160,12 +160,46 @@ else
   fail "Back did not return to Invest: $(texts)"
 fi
 
+adb shell settings put system accelerometer_rotation 0
+adb shell settings put system user_rotation 1
+sleep 3
+if seen 'How much are you investing'; then
+  note "survives turning the screen, webview $(webview_bounds)"
+else
+  fail "lost the screen on rotation: $(texts)"
+fi
+shot landscape
+adb shell settings put system user_rotation 0
+
+adb shell settings put system font_scale 1.3
+sleep 3
+shot large-text
+adb shell settings put system font_scale 1.0
+
 adb shell am force-stop "$PACKAGE"
 adb shell am start -n "$PACKAGE/.MainActivity"
 if wait_for 'How much are you investing'; then
-  note "folder remembered after restart"
+  note "folder remembered after an app restart"
 else
-  fail "folder forgotten after restart: $(texts)"
+  fail "folder forgotten after an app restart: $(texts)"
 fi
 shot restarted
+
+adb reboot
+adb wait-for-device
+until [ "$(adb shell getprop sys.boot_completed | tr -d '')" = 1 ]; do sleep 3; done
+sleep 10
+adb shell am start -n "$PACKAGE/.MainActivity"
+if wait_for 'How much are you investing'; then
+  note "folder remembered after a device restart"
+else
+  fail "folder forgotten after a device restart: $(texts)"
+fi
+tap 'Portfolio'
+if seen 'NEW'; then
+  note "portfolio still there after a device restart"
+else
+  fail "portfolio gone after a device restart: $(texts)"
+fi
+shot rebooted
 finish

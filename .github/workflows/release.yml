@@ -172,25 +172,29 @@ jobs:
           mv src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk             "Stocks-Pie_${version}_android.apk"
 
       - name: Keep the APK with this run
-        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
         uses: actions/upload-artifact@v7
         with:
           name: stocks-pie-android
           path: Stocks-Pie_*_android.apk
 
-      - name: Publish the APK
-        if: startsWith(github.ref, 'refs/tags/')
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ github.ref_name }}
-        run: |
-          gh release view "$TAG" > /dev/null 2>&1 || gh release create "$TAG" --draft             --title "Stocks Pie $TAG"             --notes 'See "Download" in the README for what to expect on first launch.'
-          gh release upload "$TAG" Stocks-Pie_*_android.apk --clobber
-
-  android-smoke:
+  # Nothing else tries the app on Android, so a release waits for this to pass.
+  android-check:
     needs: android
-    if: github.ref == 'refs/heads/android-mobile'
+    if: ${{ !cancelled() && needs.android.result == 'success' }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: phone-android-16
+            api-level: 36
+            profile: pixel_7
+          - name: phone-android-11
+            api-level: 30
+            profile: pixel_4
+          - name: tablet-android-16
+            api-level: 36
+            profile: pixel_tablet
     steps:
       - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
@@ -203,14 +207,32 @@ jobs:
           sudo udevadm trigger --name-match=kvm
       - uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 36
+          api-level: ${{ matrix.api-level }}
+          profile: ${{ matrix.profile }}
           target: google_apis
           arch: x86_64
           force-avd-creation: false
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
-          script: bash .github/android-smoke.sh Stocks-Pie_*_android.apk
+          script: bash .github/android-check.sh Stocks-Pie_*_android.apk
       - uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: android-smoke
-          path: smoke
+          name: android-check-${{ matrix.name }}
+          path: android-check
+
+  android-publish:
+    needs: android-check
+    if: ${{ !cancelled() && needs.android-check.result == 'success' && startsWith(github.ref, 'refs/tags/') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: stocks-pie-android
+      - name: Publish the APK
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release view "$TAG" > /dev/null 2>&1 || gh release create "$TAG" --draft             --title "Stocks Pie $TAG"             --notes 'See "Download" in the README for what to expect on first launch.'
+          gh release upload "$TAG" Stocks-Pie_*_android.apk --clobber
