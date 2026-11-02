@@ -8,7 +8,7 @@ import type { Portfolio } from '../domain/types';
 import { loadPortfolioFromText, savePortfolioToText } from './serialization';
 import type { PortfolioStore } from './types';
 
-export function isDesktopApp(): boolean {
+export function isTauriApp(): boolean {
   return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 }
 

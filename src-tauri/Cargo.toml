@@ -5,11 +5,18 @@ description = "Buy-only portfolio rebalancing that keeps your data on your own c
 license = "MIT"
 edition = "2021"
 
+[lib]
+name = "stocks_pie_lib"
+# cdylib is what Android loads; rlib is what the desktop binary links.
+crate-type = ["staticlib", "cdylib", "rlib"]
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = [] }
+
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-dialog = "2"
 
 [profile.release]
