@@ -134,8 +134,12 @@
 @media (max-width: 767px) and (min-height: 600px) {
   .confirm {
     position: sticky;
-    bottom: calc(var(--nav-bar-height) + var(--space-2) + env(safe-area-inset-bottom));
+    bottom: calc(var(--nav-bar-height) + env(safe-area-inset-bottom));
     z-index: 10;
+    /* A solid strip, or the rows scrolling behind would show around the button. */
+    margin: 0 calc(var(--space-4) * -1);
+    padding: var(--space-2) var(--space-4);
+    background: var(--color-bg);
   }
 }
 

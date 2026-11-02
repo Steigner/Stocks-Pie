@@ -36,6 +36,8 @@
 .row {
   display: flex;
   flex-direction: column;
+  /* Browsers start a button's flex items at the left unless told otherwise. */
+  align-items: stretch;
   gap: var(--space-1);
   width: 100%;
   min-height: 44px;
@@ -64,8 +66,9 @@
 
 .identity {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
-  gap: var(--space-2);
+  gap: 0 var(--space-2);
   min-width: 0;
 }
 
