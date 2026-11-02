@@ -1,11 +1,12 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { App } from './App';
 import { emptyPortfolio } from './domain/portfolio';
 import type { Portfolio } from './domain/types';
 import { DOWNLOAD_URL } from './download';
 import type { PortfolioStore } from './storage';
+import { cleanupWithHistory, pressBack } from './testing/history';
 import { InMemoryPortfolioStore } from './testing/InMemoryPortfolioStore';
 
 const PORTFOLIO: Portfolio = {
@@ -65,6 +66,8 @@ async function investOneRound(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe('App', () => {
+  afterEach(cleanupWithHistory);
+
   it('opens the web preview on the sample portfolio, one click from the download', async () => {
     const user = userEvent.setup();
     render(<App />);
@@ -451,6 +454,33 @@ describe('App', () => {
     await user.selectOptions(screen.getByLabelText('Currency'), 'EUR');
 
     await waitFor(() => expect(store.saved.at(-1)?.currency).toBe('EUR'));
+  });
+
+  it('closes the editor on Back without saving', async () => {
+    const user = userEvent.setup();
+    const store = new InMemoryPortfolioStore(PORTFOLIO);
+    render(<App store={store} />);
+    await openPortfolio(user);
+    await user.click(screen.getByRole('button', { name: 'Edit ALFA' }));
+    const dialog = await screen.findByRole('dialog');
+    await user.type(within(dialog).getByLabelText('Holding (CZK)'), '999');
+
+    await pressBack();
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Portfolio' })).toBeInTheDocument();
+    expect(store.saved).toEqual([]);
+  });
+
+  it('returns to Invest on Back', async () => {
+    const user = userEvent.setup();
+    render(<App store={new InMemoryPortfolioStore(PORTFOLIO)} />);
+    await user.click(await screen.findByRole('button', { name: 'History' }));
+    await screen.findByRole('heading', { name: 'History' });
+
+    await pressBack();
+
+    expect(await screen.findByRole('heading', { name: 'Invest' })).toBeInTheDocument();
   });
 
   it('lists a round by ticker rather than by company name', async () => {

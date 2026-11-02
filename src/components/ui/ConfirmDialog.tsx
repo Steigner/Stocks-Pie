@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from 'react';
+import { useBackHandler } from '../../useBackHandler';
 import { Button } from './Button';
 import styles from './ConfirmDialog.module.css';
 
@@ -17,6 +18,8 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
+  useBackHandler(true, onCancel);
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {

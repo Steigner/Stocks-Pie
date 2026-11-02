@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { validatePosition } from '../domain/allocation';
 import { PortfolioValidationError, type Position } from '../domain/types';
+import { useBackHandler } from '../useBackHandler';
 import { Banner } from './ui/Banner';
 import { Button } from './ui/Button';
 import styles from './PositionEditor.module.css';
@@ -36,6 +37,7 @@ export function PositionEditor({
   const holdingId = useId();
   const targetId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
+  useBackHandler(true, onClose);
 
   // Focus on the dialog rather than a field, so a phone's keyboard stays closed
   // until a field is tapped, and Escape reaches this dialog from the start.
