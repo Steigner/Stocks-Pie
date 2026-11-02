@@ -1,7 +1,7 @@
 [package]
 name = "stocks-pie"
 version = "1.0.0"
-description = "Buy-only portfolio rebalancing that keeps your data on your own computer."
+description = "Buy-only portfolio rebalancing that keeps your data on your own device."
 license = "MIT"
 edition = "2021"
 

@@ -1,2 +1,2 @@
-/** Where the desktop installers are published. */
+/** Where the installers and the Android APK are published. */
 export const DOWNLOAD_URL = 'https://github.com/Steigner/Stocks-Pie/releases/latest';

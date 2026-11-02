@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Buy-only portfolio rebalancing for pie investing: a desktop app with a web preview.",
+  "description": "Buy-only portfolio rebalancing for pie investing: an app for desktop and Android with a web preview.",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",

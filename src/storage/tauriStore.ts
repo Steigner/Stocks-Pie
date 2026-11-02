@@ -1,5 +1,5 @@
 /**
- * Persistence for the desktop app: `portfolio.json` in a folder the user picks
+ * Persistence for the app: `portfolio.json` in a folder the user picks
  * through the operating system's own dialog. The path never reaches this side -
  * the Rust commands in src-tauri hold it and only ever touch that one file.
  */

@@ -19,7 +19,7 @@ const PORTFOLIO: Portfolio = {
   rounds: [],
 };
 
-/** Like the desktop store: its first folder holds PORTFOLIO, any newly picked one is empty. */
+/** Like the app's store: its first folder holds PORTFOLIO, any newly picked one is empty. */
 class FolderStore implements PortfolioStore {
   readonly saved: Portfolio[] = [];
   loads = 0;

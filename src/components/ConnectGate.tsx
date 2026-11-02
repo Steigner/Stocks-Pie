@@ -4,7 +4,7 @@ import { Button } from './ui/Button';
 import { Card } from './ui/Card';
 import styles from './ConnectGate.module.css';
 
-/** The desktop app's first screen, until a folder for the portfolio is chosen. */
+/** The app's first screen, until a folder for the portfolio is chosen. */
 export function ConnectGate() {
   const { status, errorMessage, connect } = usePortfolio();
 
