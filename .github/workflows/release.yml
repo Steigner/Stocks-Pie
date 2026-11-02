@@ -9,7 +9,6 @@ name: Release
 on:
   push:
     tags: ['v*']
-    branches: [android-mobile]
   workflow_dispatch:
 
 permissions:
