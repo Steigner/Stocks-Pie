@@ -2,12 +2,14 @@ import { useEffect, useRef } from 'react';
 
 /** Most recent last, so Back undoes whatever opened last. */
 const handlers: Array<() => void> = [];
-/** History steps taken by a release rather than by the user. */
-let ownSteps = 0;
+/** History moves made by releases rather than by the user. */
+let ownMoves = 0;
+/** Entries released in the current tick, not yet given back. */
+let releasedEntries = 0;
 
 function handlePopState() {
-  if (ownSteps > 0) {
-    ownSteps -= 1;
+  if (ownMoves > 0) {
+    ownMoves -= 1;
     return;
   }
   handlers.pop()?.();
@@ -15,6 +17,23 @@ function handlePopState() {
 
 if (typeof window !== 'undefined') {
   window.addEventListener('popstate', handlePopState);
+}
+
+/**
+ * Browsers can drop a history move requested while another is pending, so
+ * entries released together, such as a dialog and the editor under it, go back
+ * as one move.
+ */
+function releaseEntry() {
+  releasedEntries += 1;
+  if (releasedEntries > 1) {
+    return;
+  }
+  queueMicrotask(() => {
+    ownMoves += 1;
+    history.go(-releasedEntries);
+    releasedEntries = 0;
+  });
 }
 
 /**
@@ -37,8 +56,7 @@ export function useBackHandler(active: boolean, onBack: () => void): void {
       const index = handlers.indexOf(handler);
       if (index >= 0) {
         handlers.splice(index, 1);
-        ownSteps += 1;
-        history.back();
+        releaseEntry();
       }
     };
   }, [active]);

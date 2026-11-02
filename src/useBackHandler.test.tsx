@@ -56,6 +56,25 @@ describe('useBackHandler', () => {
     expect(outer).toHaveBeenCalledOnce();
   });
 
+  it('stays in step when two handlers are released together', async () => {
+    const outer = vi.fn();
+    const inner = vi.fn();
+    const base = vi.fn();
+    function Base({ open }: { open: boolean }) {
+      useBackHandler(true, base);
+      return open ? <Handlers outer={outer} inner={inner} /> : null;
+    }
+    const { rerender } = render(<Base open />);
+
+    rerender(<Base open={false} />);
+    await settleHistory();
+    await pressBack();
+
+    expect(base).toHaveBeenCalledOnce();
+    expect(outer).not.toHaveBeenCalled();
+    expect(inner).not.toHaveBeenCalled();
+  });
+
   it('ignores the history step caused by its own release', async () => {
     const outer = vi.fn();
     const inner = vi.fn();
