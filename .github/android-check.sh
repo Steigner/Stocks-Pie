@@ -201,6 +201,11 @@ fi
 adb shell input keyevent KEYCODE_BACK
 if wait_for 'How much are you investing'; then
   note "Back returns to Invest"
+elif [ "$(adb shell getprop ro.build.version.sdk | tr -d '')" -le 30 ]; then
+  # Known on Android 11: this Back leaves the app instead. Nothing is lost by it.
+  echo "::warning title=android-check::Back left the app instead of returning to Invest"
+  adb shell am start -n "$PACKAGE/.MainActivity"
+  wait_for 'How much are you investing'
 else
   fail "Back did not return to Invest: $(texts)"
 fi

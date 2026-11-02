@@ -137,7 +137,12 @@ jobs:
 
       - name: Install the Android NDK
         run: |
-          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;$NDK_VERSION"
+          # The download fails now and then, and a failure here costs a whole release.
+          for attempt in 1 2 3; do
+            "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;$NDK_VERSION" && break
+            [ "$attempt" = 3 ] && exit 1
+            sleep 30
+          done
           echo "NDK_HOME=$ANDROID_HOME/ndk/$NDK_VERSION" >> "$GITHUB_ENV"
 
       - run: npm ci
