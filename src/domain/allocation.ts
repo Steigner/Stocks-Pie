@@ -32,33 +32,56 @@ function sum(values: readonly number[]): number {
 }
 
 /**
+ * Checks one position on its own, leaving the 100 percent total to
+ * `validatePositions`, so a single edit can be saved while the total is still off.
+ *
+ * @throws PortfolioValidationError if it has a blank ticker or one used by
+ * `others`, a non-positive target, or a negative holding.
+ */
+export function validatePosition(
+  position: Position,
+  others: readonly Position[],
+): void {
+  if (position.ticker.trim() === '') {
+    throw new PortfolioValidationError('Every position needs a ticker.');
+  }
+  if (others.some((other) => other.ticker === position.ticker)) {
+    throw new PortfolioValidationError('Each ticker can only be used once.');
+  }
+  if (position.targetPct <= 0) {
+    throw new PortfolioValidationError('Every target needs to be more than 0%.');
+  }
+  if (position.holding < 0) {
+    throw new PortfolioValidationError("A holding can't be negative.");
+  }
+}
+
+/** Whether the targets sum to 100 percent, give or take rounding. */
+export function targetsAddUp(positions: readonly Position[]): boolean {
+  const totalPct = sum(positions.map((position) => position.targetPct));
+  return Math.abs(totalPct - 100) <= TARGET_SUM_TOLERANCE;
+}
+
+/**
  * Checks that positions form a valid target allocation.
  *
- * @throws PortfolioValidationError if the portfolio is empty, has a blank or
- * duplicate ticker, a non-positive target, a negative holding, or targets that
- * do not sum to 100 percent.
+ * @throws PortfolioValidationError if the portfolio is empty, any position fails
+ * `validatePosition`, or targets do not sum to 100 percent.
  */
 export function validatePositions(positions: readonly Position[]): void {
   if (positions.length === 0) {
     throw new PortfolioValidationError('Add at least one position.');
   }
 
-  const tickers = positions.map((position) => position.ticker);
-  if (tickers.some((ticker) => ticker.trim() === '')) {
-    throw new PortfolioValidationError('Every position needs a ticker.');
-  }
-  if (new Set(tickers).size !== tickers.length) {
-    throw new PortfolioValidationError('Each ticker can only be used once.');
-  }
-  if (positions.some((position) => position.targetPct <= 0)) {
-    throw new PortfolioValidationError('Every target needs to be more than 0%.');
-  }
-  if (positions.some((position) => position.holding < 0)) {
-    throw new PortfolioValidationError("A holding can't be negative.");
-  }
+  positions.forEach((position, index) => {
+    validatePosition(
+      position,
+      positions.filter((_other, otherIndex) => otherIndex !== index),
+    );
+  });
 
-  const totalPct = sum(positions.map((position) => position.targetPct));
-  if (Math.abs(totalPct - 100) > TARGET_SUM_TOLERANCE) {
+  if (!targetsAddUp(positions)) {
+    const totalPct = sum(positions.map((position) => position.targetPct));
     throw new PortfolioValidationError(
       `Targets add up to ${totalPct.toFixed(2)}%, not 100%.`,
     );

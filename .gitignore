@@ -22,6 +22,10 @@ yarn-error.log*
 # Personal pie and held-back cash (legacy data directory, kept out of git)
 /data/
 
+# Local working notes, never published
+docs/superpowers/
+.superpowers/
+
 # Desktop app: Rust build output, generated schemas, and icons derived from
 # src-tauri/app-icon.svg
 src-tauri/target/
