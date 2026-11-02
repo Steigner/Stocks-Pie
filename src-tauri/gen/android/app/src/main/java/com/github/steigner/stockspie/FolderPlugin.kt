@@ -100,6 +100,19 @@ class FolderPlugin(private val activity: Activity) : Plugin(activity) {
     DocumentsContract.createDocument(resolver, folderDocument(folder), "application/octet-stream", name)
       ?: throw IllegalStateException("Could not create $name.")
 
+  // A provider may refuse by returning false or null instead of throwing, and
+  // reporting that as saved would silently lose the user's edit.
+  private fun delete(document: Uri) {
+    if (!DocumentsContract.deleteDocument(resolver, document)) {
+      throw IllegalStateException("Could not replace the old file in the folder.")
+    }
+  }
+
+  private fun rename(document: Uri, name: String) {
+    DocumentsContract.renameDocument(resolver, document, name)
+      ?: throw IllegalStateException("Could not rename the new file in the folder.")
+  }
+
   private fun isJson(text: String): Boolean =
     try {
       JSONObject(text)
@@ -169,7 +182,7 @@ class FolderPlugin(private val activity: Activity) : Plugin(activity) {
       val partial = findChild(folder, PARTIAL_NAME)
       val text = partial?.let(::readText)
       if (partial != null && text != null && isJson(text)) {
-        DocumentsContract.renameDocument(resolver, partial, FILE_NAME)
+        rename(partial, FILE_NAME)
         invoke.resolve(JSObject().put("text", text))
       } else {
         invoke.resolve(JSObject())
@@ -182,7 +195,7 @@ class FolderPlugin(private val activity: Activity) : Plugin(activity) {
     val args = invoke.parseArgs(WriteArgs::class.java)
     inBackground(invoke) {
       val folder = requireFolder()
-      findChild(folder, PARTIAL_NAME)?.let { DocumentsContract.deleteDocument(resolver, it) }
+      findChild(folder, PARTIAL_NAME)?.let(::delete)
 
       // Written aside first, so a failed write can never leave a truncated
       // portfolio behind. Renaming onto an existing name isn't reliable across
@@ -197,11 +210,11 @@ class FolderPlugin(private val activity: Activity) : Plugin(activity) {
 
       val existing = findChild(folder, FILE_NAME)
       if (supportsRename(partial)) {
-        existing?.let { DocumentsContract.deleteDocument(resolver, it) }
-        DocumentsContract.renameDocument(resolver, partial, FILE_NAME)
+        existing?.let(::delete)
+        rename(partial, FILE_NAME)
       } else {
         writeText(existing ?: createFile(folder, FILE_NAME), args.text)
-        DocumentsContract.deleteDocument(resolver, partial)
+        delete(partial)
       }
       invoke.resolve()
     }
