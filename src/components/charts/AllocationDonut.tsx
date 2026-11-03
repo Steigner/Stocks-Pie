@@ -1,5 +1,5 @@
 import type { Position } from '../../domain/types';
-import { formatPct } from '../../format';
+import { useTranslation } from '../../useTranslation';
 import styles from './AllocationDonut.module.css';
 
 const SLICE_COLORS = [
@@ -18,11 +18,12 @@ const RADIUS = 50 / Math.PI;
 
 export function AllocationDonut({
   positions,
-  label = 'Target allocation',
+  label,
 }: {
   positions: readonly Position[];
   label?: string;
 }) {
+  const { text, formatPct } = useTranslation();
   const total = positions.reduce((sum, position) => sum + position.targetPct, 0);
   let start = 0;
   const slices = positions.map((position, index) => {
@@ -41,7 +42,12 @@ export function AllocationDonut({
   // Keyed by index: a file edited by hand can hold a blank or repeated ticker.
   return (
     <div className={styles.chart}>
-      <svg className={styles.donut} viewBox="0 0 42 42" role="img" aria-label={label}>
+      <svg
+        className={styles.donut}
+        viewBox="0 0 42 42"
+        role="img"
+        aria-label={label ?? text.targetAllocation}
+      >
         {slices.map((slice, index) => (
           <circle
             key={index}

@@ -3,11 +3,12 @@ import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { roundTotal } from '../domain/types';
-import { formatDate, formatMoney } from '../format';
 import { usePortfolio } from '../state/PortfolioContext';
+import { useTranslation } from '../useTranslation';
 import styles from './HistoryScreen.module.css';
 
 export function HistoryScreen() {
+  const { text, formatDate, formatMoney } = useTranslation();
   const { portfolio, deleteRound } = usePortfolio();
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
@@ -18,8 +19,8 @@ export function HistoryScreen() {
   if (portfolio.rounds.length === 0) {
     return (
       <div className={styles.screen}>
-        <h1>History</h1>
-        <p className={styles.empty}>No deposits recorded yet.</p>
+        <h1>{text.history}</h1>
+        <p className={styles.empty}>{text.noRounds}</p>
       </div>
     );
   }
@@ -33,17 +34,17 @@ export function HistoryScreen() {
 
   return (
     <div className={styles.screen}>
-      <h1>History ({portfolio.rounds.length})</h1>
+      <h1>{text.historyCount(portfolio.rounds.length)}</h1>
       <div className={styles.list}>
         {rounds.map((round) => (
           <Card key={round.id} className={styles.round}>
             <div className={styles.roundHeader}>
               <span className={styles.date}>{formatDate(round.on)}</span>
               <span className={styles.total}>
-                {formatMoney(roundTotal(round), portfolio.currency)} invested
+                {text.invested(formatMoney(roundTotal(round), portfolio.currency))}
               </span>
               <Button variant="danger" onClick={() => setPendingDeleteId(round.id)}>
-                Delete
+                {text.delete}
               </Button>
             </div>
             <ul className={styles.buys}>
@@ -62,15 +63,17 @@ export function HistoryScreen() {
 
       {pendingRound && (
         <ConfirmDialog
-          title="Delete this round?"
+          title={text.deleteRound}
           onCancel={() => setPendingDeleteId(null)}
           onConfirm={() => {
             deleteRound(pendingRound.id);
             setPendingDeleteId(null);
           }}
         >
-          This takes {formatMoney(roundTotal(pendingRound), portfolio.currency)} back
-          out of the positions it bought on {formatDate(pendingRound.on)}.
+          {text.deleteRoundHelp(
+            formatMoney(roundTotal(pendingRound), portfolio.currency),
+            formatDate(pendingRound.on),
+          )}
         </ConfirmDialog>
       )}
     </div>

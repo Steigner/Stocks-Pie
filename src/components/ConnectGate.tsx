@@ -1,4 +1,5 @@
 import { usePortfolio } from '../state/PortfolioContext';
+import { useTranslation } from '../useTranslation';
 import { Banner } from './ui/Banner';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
@@ -6,6 +7,7 @@ import styles from './ConnectGate.module.css';
 
 /** The app's first screen, until a folder for the portfolio is chosen. */
 export function ConnectGate() {
+  const { text } = useTranslation();
   const { status, errorMessage, connect } = usePortfolio();
 
   return (
@@ -13,10 +15,7 @@ export function ConnectGate() {
       <Card className={styles.card}>
         <h1 className={styles.title}>Stocks Pie</h1>
         <div className={styles.body}>
-          <p>
-            Pick a folder for your <code>portfolio.json</code>. The app will remember
-            it.
-          </p>
+          <p>{text.connectIntro}</p>
           {errorMessage && <Banner tone="error">{errorMessage}</Banner>}
         </div>
         <Button
@@ -25,11 +24,9 @@ export function ConnectGate() {
           busy={status === 'connecting'}
           onClick={() => void connect()}
         >
-          Choose a folder
+          {text.chooseFolder}
         </Button>
-        <p className={styles.disclaimer}>
-          Not investment advice. Always check your orders before you place them.
-        </p>
+        <p className={styles.disclaimer}>{text.disclaimer}</p>
       </Card>
     </div>
   );

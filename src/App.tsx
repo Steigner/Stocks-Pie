@@ -17,14 +17,15 @@ import { InvestScreen } from './screens/InvestScreen';
 import { PortfolioScreen } from './screens/PortfolioScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { useBackHandler } from './useBackHandler';
+import { useTranslation } from './useTranslation';
 
 type ScreenId = 'invest' | 'portfolio' | 'history' | 'settings';
 
-const NAV_ITEMS: ReadonlyArray<{ id: ScreenId; label: string; icon: ReactNode }> = [
-  { id: 'invest', label: 'Invest', icon: <InvestIcon /> },
-  { id: 'portfolio', label: 'Portfolio', icon: <PortfolioIcon /> },
-  { id: 'history', label: 'History', icon: <HistoryIcon /> },
-  { id: 'settings', label: 'Settings', icon: <SettingsIcon /> },
+const NAV_ITEMS: ReadonlyArray<{ id: ScreenId; icon: ReactNode }> = [
+  { id: 'invest', icon: <InvestIcon /> },
+  { id: 'portfolio', icon: <PortfolioIcon /> },
+  { id: 'history', icon: <HistoryIcon /> },
+  { id: 'settings', icon: <SettingsIcon /> },
 ];
 
 const SCREENS: Record<ScreenId, () => ReactNode> = {
@@ -35,6 +36,7 @@ const SCREENS: Record<ScreenId, () => ReactNode> = {
 };
 
 function AppContent() {
+  const { text } = useTranslation();
   const [screen, setScreen] = useState<ScreenId>('invest');
   const { status, locationLabel, saveErrorMessage, isPreview } = usePortfolio();
   useBackHandler(screen !== 'invest', () => setScreen('invest'));
@@ -45,7 +47,7 @@ function AppContent() {
 
   return (
     <AppShell
-      items={NAV_ITEMS}
+      items={NAV_ITEMS.map((item) => ({ ...item, label: text[item.id] }))}
       active={screen}
       onSelect={setScreen}
       locationLabel={locationLabel}
@@ -60,16 +62,16 @@ function AppContent() {
               target="_blank"
               rel="noreferrer"
             >
-              Download the app
+              {text.download}
             </LinkButton>
           }
         >
-          A preview with sample data. Nothing you change is saved.
+          {text.preview}
         </Banner>
       )}
       {saveErrorMessage && (
         <Banner tone="error">
-          Your last change wasn&apos;t saved: {saveErrorMessage}
+          {text.saveError} {saveErrorMessage}
         </Banner>
       )}
       {SCREENS[screen]()}

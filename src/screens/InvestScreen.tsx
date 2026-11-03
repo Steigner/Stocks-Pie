@@ -13,8 +13,8 @@ import {
   orderedPositions,
   skippedPositions,
 } from '../domain/types';
-import { formatMoney, formatPct, formatSignedPct } from '../format';
 import { usePortfolio } from '../state/PortfolioContext';
+import { useTranslation } from '../useTranslation';
 import styles from './InvestScreen.module.css';
 
 function PlanRow({
@@ -41,9 +41,11 @@ function PlanRow({
 }
 
 export function InvestScreen() {
+  const { text, formatMoney, formatPct, formatSignedPct, validationMessage } =
+    useTranslation();
   const { portfolio, confirmRound } = usePortfolio();
   const [budgetInput, setBudgetInput] = useState(0);
-  const [confirmation, setConfirmation] = useState<string | null>(null);
+  const [confirmation, setConfirmation] = useState<number | null>(null);
 
   /** Why the stored portfolio cannot be invested, or null when it is fine. */
   const invalidReason = useMemo(() => {
@@ -55,7 +57,7 @@ export function InvestScreen() {
       return null;
     } catch (error) {
       if (error instanceof PortfolioValidationError) {
-        return error.message;
+        return error;
       }
       throw error;
     }
@@ -76,13 +78,13 @@ export function InvestScreen() {
   const { currency } = portfolio;
 
   if (portfolio.positions.length === 0) {
-    return <Banner tone="info">Add your positions on the Portfolio tab first.</Banner>;
+    return <Banner tone="info">{text.addPositionsFirst}</Banner>;
   }
 
   if (invalidReason) {
     return (
       <Banner tone="warning">
-        Fix your portfolio on the Portfolio tab first. {invalidReason}
+        {text.fixPortfolioFirst} {validationMessage(invalidReason)}
       </Banner>
     );
   }
@@ -92,10 +94,7 @@ export function InvestScreen() {
       return;
     }
     confirmRound(plan);
-    setConfirmation(
-      `Recorded ${formatMoney(plan.invested, currency)}. Update your holdings ` +
-        'on the Portfolio tab when prices change.',
-    );
+    setConfirmation(plan.invested);
     setBudgetInput(0);
   };
 
@@ -104,16 +103,17 @@ export function InvestScreen() {
 
   return (
     <div className={styles.screen}>
-      <h1>Invest</h1>
-      {confirmation && <Banner tone="success">{confirmation}</Banner>}
+      <h1>{text.invest}</h1>
+      {confirmation !== null && (
+        <Banner tone="success">
+          {text.recorded(formatMoney(confirmation, currency))}
+        </Banner>
+      )}
 
       <div className={styles.budgetRow}>
         <span className={styles.withTip}>
-          <label htmlFor="budget">How much are you investing ({currency})</label>
-          <InfoTip label="the deposit">
-            The app splits the whole amount to get you as close to your targets as
-            possible.
-          </InfoTip>
+          <label htmlFor="budget">{text.budget(currency)}</label>
+          <InfoTip label={text.depositInfo}>{text.depositHelp}</InfoTip>
         </span>
         <input
           id="budget"
@@ -134,8 +134,10 @@ export function InvestScreen() {
 
       {plan && plan.leftover > 0 && (
         <Banner tone="warning">
-          {formatMoney(plan.leftover, currency)} is less than the minimum order of{' '}
-          {formatMoney(portfolio.minOrder, currency)}. Keep it for next time.
+          {text.belowMinimum(
+            formatMoney(plan.leftover, currency),
+            formatMoney(portfolio.minOrder, currency),
+          )}
         </Banner>
       )}
 
@@ -143,12 +145,9 @@ export function InvestScreen() {
         <div className={styles.result}>
           <div className={styles.summary}>
             <div className={styles.metrics}>
+              <Metric label={text.buying} value={text.positionCount(orders.length)} />
               <Metric
-                label="Buying"
-                value={`${orders.length} ${orders.length === 1 ? 'position' : 'positions'}`}
-              />
-              <Metric
-                label="Drift"
+                label={text.drift}
                 value={formatPct(plan.driftAfterPct)}
                 delta={formatSignedPct(plan.driftAfterPct - plan.driftBeforePct)}
                 deltaDirection={
@@ -157,9 +156,9 @@ export function InvestScreen() {
               />
             </div>
             <Card className={styles.after}>
-              <h2 className={styles.sectionTitle}>After this buy</h2>
+              <h2 className={styles.sectionTitle}>{text.afterBuy}</h2>
               <AllocationDonut
-                label="Portfolio after this buy"
+                label={text.afterBuyChart}
                 positions={plan.positions.map((item) => ({
                   ...item,
                   targetPct: item.projectedPct,
@@ -171,7 +170,7 @@ export function InvestScreen() {
           <div className={styles.details}>
             {orders.length > 0 && (
               <Card>
-                <h2 className={styles.sectionTitle}>Send these orders</h2>
+                <h2 className={styles.sectionTitle}>{text.sendOrders}</h2>
                 <ul className={styles.rows}>
                   {orders.map((order) => (
                     <PlanRow
@@ -179,7 +178,11 @@ export function InvestScreen() {
                       ticker={order.ticker}
                       name={order.name}
                       amount={formatMoney(order.buy, currency)}
-                      detail={`${formatPct(order.currentPct)} to ${formatPct(order.projectedPct)}, target ${order.targetPct}%`}
+                      detail={text.orderDetail(
+                        formatPct(order.currentPct),
+                        formatPct(order.projectedPct),
+                        formatPct(order.targetPct, null),
+                      )}
                     />
                   ))}
                 </ul>
@@ -189,11 +192,9 @@ export function InvestScreen() {
             {skipped.length > 0 && (
               <Card>
                 <details className={styles.fold}>
-                  <summary>Skipped this time ({skipped.length})</summary>
+                  <summary>{text.skipped(skipped.length)}</summary>
                   <p className={styles.foldText}>
-                    These are on target already, or a{' '}
-                    {formatMoney(portfolio.minOrder, currency)} order would overshoot
-                    them. They go first next time.
+                    {text.skippedHelp(formatMoney(portfolio.minOrder, currency))}
                   </p>
                   <ul className={styles.rows}>
                     {skipped.map((item) => (
@@ -202,7 +203,11 @@ export function InvestScreen() {
                         ticker={item.ticker}
                         name={item.name}
                         amount={formatMoney(item.holding, currency)}
-                        detail={`${formatPct(item.currentPct)} now, target ${item.targetPct}%, ${formatSignedPct(gapPct(item))}`}
+                        detail={text.skippedDetail(
+                          formatPct(item.currentPct),
+                          formatPct(item.targetPct, null),
+                          formatSignedPct(gapPct(item)),
+                        )}
                       />
                     ))}
                   </ul>
@@ -212,14 +217,14 @@ export function InvestScreen() {
 
             <Card>
               <details className={styles.fold}>
-                <summary>How the portfolio moves</summary>
+                <summary>{text.portfolioMoves}</summary>
                 <DriftChart plan={plan} />
               </details>
             </Card>
 
             <div className={styles.confirm}>
               <Button variant="primary" fullWidth onClick={handleConfirm}>
-                I&apos;ve placed the orders
+                {text.confirmOrders}
               </Button>
             </div>
           </div>

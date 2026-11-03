@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useTranslation } from '../../useTranslation';
 import styles from './InfoTip.module.css';
 
 interface InfoTipProps {
@@ -19,6 +20,7 @@ interface InfoTipProps {
  * toggle would close what the focus just opened.
  */
 export function InfoTip({ label, children }: InfoTipProps) {
+  const { text } = useTranslation();
   const [open, setOpen] = useState(false);
   const bubbleId = useId();
   const wrapRef = useRef<HTMLSpanElement>(null);
@@ -55,7 +57,7 @@ export function InfoTip({ label, children }: InfoTipProps) {
       <button
         type="button"
         className={styles.marker}
-        aria-label={`About ${label}`}
+        aria-label={text.about(label)}
         aria-expanded={open}
         aria-describedby={open ? bubbleId : undefined}
         onClick={() => setOpen(true)}

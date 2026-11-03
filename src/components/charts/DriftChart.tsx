@@ -1,9 +1,10 @@
 import { gapPct, type PurchasePlan } from '../../domain/types';
-import { formatSignedPct } from '../../format';
+import { useTranslation } from '../../useTranslation';
 import styles from './DriftChart.module.css';
 
 /** How far each position is off target now, and after this round's purchase. */
 export function DriftChart({ plan }: { plan: PurchasePlan }) {
+  const { text, formatSignedPct } = useTranslation();
   const rows = plan.positions.map((position) => ({
     ticker: position.ticker,
     now: position.currentPct - position.targetPct,
@@ -18,8 +19,8 @@ export function DriftChart({ plan }: { plan: PurchasePlan }) {
   return (
     <div className={styles.chart}>
       <div className={styles.legend} aria-hidden="true">
-        <span className={styles.legendNow}>Now</span>
-        <span className={styles.legendAfter}>After purchase</span>
+        <span className={styles.legendNow}>{text.now}</span>
+        <span className={styles.legendAfter}>{text.afterPurchase}</span>
       </div>
       {rows.map((row) => (
         <div key={row.ticker} className={styles.row}>

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useTranslation } from '../useTranslation';
 import styles from './AppShell.module.css';
 
 interface NavItem<T extends string> {
@@ -22,9 +23,10 @@ export function AppShell<T extends string>({
   locationLabel,
   children,
 }: AppShellProps<T>) {
+  const { text } = useTranslation();
   return (
     <div className={styles.shell}>
-      <nav className={styles.sidebar} aria-label="Main">
+      <nav className={styles.sidebar} aria-label={text.mainNavigation}>
         <div className={styles.brand}>Stocks Pie</div>
         <ul className={styles.navList}>
           {items.map((item) => (
@@ -42,7 +44,7 @@ export function AppShell<T extends string>({
           ))}
         </ul>
         {locationLabel && (
-          <div className={styles.location}>Saved to: {locationLabel}</div>
+          <div className={styles.location}>{text.savedTo(locationLabel)}</div>
         )}
       </nav>
       <main className={styles.content}>

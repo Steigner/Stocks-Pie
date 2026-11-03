@@ -11,7 +11,7 @@ contributors.
   - the **app** for desktop and Android ([src-tauri/](src-tauri/)), which wraps the
     bundle with **Tauri** and is where real data lives, and
   - the **web preview** on GitHub Pages, which opens on
-    [a sample portfolio](src/domain/samplePortfolio.ts) and saves nothing.
+    [a sample portfolio](src/domain/samplePortfolio.ts) and saves no portfolio changes.
 - Persistence is chosen in [src/storage/index.ts](src/storage/index.ts): the
   Tauri store in the app, an in-memory store in the browser. The app's four Rust
   commands are its only file access - they hold the folder the user picked and
@@ -47,7 +47,8 @@ contributors.
 - Only `src-tauri/app-icon.svg` is committed; `npx tauri icon` derives every
   other icon, locally and in the release workflow. Android's launcher icons land in
   `gen/android` and stay out of git.
-- All UI text, code, comments, and commit messages are in **English**.
+- Code, comments, and commit messages are in **English**. The UI supports
+  **English and Czech**, selected in Settings.
 
 ## Core Principles
 
@@ -58,6 +59,30 @@ contributors.
   more code than it costs, never for something a few lines already do.
 - UI text is short and plain, as if said to a friend: a label, a tip, or a banner
   makes its point in one or two short sentences. No semicolons, no jargon.
+- Update this file when a change affects the documented architecture, conventions,
+  or workflow.
+
+## Localization
+
+- Keep UI text in [src/translations.ts](src/translations.ts), including dialog
+  text, hints, validation messages, and accessible labels. Update both languages
+  together and read them through [src/useTranslation.ts](src/useTranslation.ts).
+- English (`en`) is the default, Czech uses `cs`. The language state lives in
+  [src/state/PortfolioContext.tsx](src/state/PortfolioContext.tsx), and
+  [src/language.ts](src/language.ts) remembers the preference locally, separately
+  from `portfolio.json`.
+- Use the localized formatters from `useTranslation` for amounts, percentages,
+  percentage points, and dates. Their implementation is in
+  [src/format.ts](src/format.ts). Keep currency codes and user-entered names and
+  tickers unchanged.
+- In Czech, use "pokyn" for a trading order and "nejmenší nákup" for the minimum
+  purchase. Keep formal address and short passive forms consistent.
+- Use `\u00a0` between Czech numbers and percent signs, between numbers and
+  percentage-point units, and inside the abbreviation `p. b.` so they stay
+  together on narrow screens. Check the exact spaces in
+  [src/format.test.ts](src/format.test.ts), since UI text queries normalize them.
+- Translate validation errors using their typed issue codes and values. Do not
+  match English error messages to select a translation.
 
 ## Code Style
 

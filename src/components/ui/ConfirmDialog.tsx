@@ -1,5 +1,6 @@
 import { useEffect, type ReactNode } from 'react';
 import { useBackHandler } from '../../useBackHandler';
+import { useTranslation } from '../../useTranslation';
 import { Button } from './Button';
 import styles from './ConfirmDialog.module.css';
 
@@ -14,10 +15,11 @@ interface ConfirmDialogProps {
 export function ConfirmDialog({
   title,
   children,
-  confirmLabel = 'Delete',
+  confirmLabel,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
+  const { text } = useTranslation();
   useBackHandler(true, onCancel);
 
   useEffect(() => {
@@ -45,10 +47,10 @@ export function ConfirmDialog({
         <div>{children}</div>
         <div className={styles.actions}>
           <Button variant="secondary" autoFocus onClick={onCancel}>
-            Cancel
+            {text.cancel}
           </Button>
           <Button variant="danger" onClick={onConfirm}>
-            {confirmLabel}
+            {confirmLabel ?? text.delete}
           </Button>
         </div>
       </div>

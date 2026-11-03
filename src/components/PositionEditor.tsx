@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { validatePosition } from '../domain/allocation';
 import { PortfolioValidationError, type Position } from '../domain/types';
 import { useBackHandler } from '../useBackHandler';
+import { useTranslation } from '../useTranslation';
 import { Banner } from './ui/Banner';
 import { Button } from './ui/Button';
 import styles from './PositionEditor.module.css';
@@ -26,11 +27,12 @@ export function PositionEditor({
   onRemove,
   onClose,
 }: PositionEditorProps) {
+  const { text, validationMessage } = useTranslation();
   const [ticker, setTicker] = useState(position?.ticker ?? '');
   const [name, setName] = useState(position?.name ?? '');
   const [holding, setHolding] = useState(position ? String(position.holding) : '');
   const [target, setTarget] = useState(position ? String(position.targetPct) : '');
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<PortfolioValidationError | null>(null);
   const titleId = useId();
   const tickerId = useId();
   const nameId = useId();
@@ -57,7 +59,7 @@ export function PositionEditor({
       validatePosition(edited, others);
     } catch (validationError) {
       if (validationError instanceof PortfolioValidationError) {
-        setError(validationError.message);
+        setError(validationError);
         return;
       }
       throw validationError;
@@ -85,16 +87,18 @@ export function PositionEditor({
         onClick={(event) => event.stopPropagation()}
       >
         <h2 id={titleId} className={styles.title}>
-          {position ? position.ticker || position.name || 'Position' : 'New position'}
+          {position
+            ? position.ticker || position.name || text.position
+            : text.newPosition}
         </h2>
-        {error && <Banner tone="error">{error}</Banner>}
+        {error && <Banner tone="error">{validationMessage(error)}</Banner>}
         <form className={styles.form} onSubmit={handleSubmit} noValidate>
           <div className={styles.field}>
-            <label htmlFor={tickerId}>Ticker</label>
+            <label htmlFor={tickerId}>{text.ticker}</label>
             <input
               id={tickerId}
               className={styles.input}
-              placeholder="e.g. AAPL"
+              placeholder={text.tickerExample}
               autoComplete="off"
               spellCheck={false}
               value={ticker}
@@ -102,11 +106,11 @@ export function PositionEditor({
             />
           </div>
           <div className={styles.field}>
-            <label htmlFor={nameId}>Name</label>
+            <label htmlFor={nameId}>{text.name}</label>
             <input
               id={nameId}
               className={styles.input}
-              placeholder="Optional"
+              placeholder={text.optional}
               autoComplete="off"
               // Enhanced spell check in Chrome and Edge sends the text to a cloud service.
               spellCheck={false}
@@ -116,7 +120,7 @@ export function PositionEditor({
           </div>
           <div className={styles.pair}>
             <div className={styles.field}>
-              <label htmlFor={holdingId}>Holding ({currency})</label>
+              <label htmlFor={holdingId}>{text.holding(currency)}</label>
               <input
                 id={holdingId}
                 className={styles.input}
@@ -130,7 +134,7 @@ export function PositionEditor({
               />
             </div>
             <div className={styles.field}>
-              <label htmlFor={targetId}>Target %</label>
+              <label htmlFor={targetId}>{text.target}</label>
               <input
                 id={targetId}
                 className={styles.input}
@@ -148,14 +152,14 @@ export function PositionEditor({
           <div className={styles.actions}>
             {onRemove && (
               <Button variant="danger" type="button" onClick={onRemove}>
-                Remove
+                {text.remove}
               </Button>
             )}
             <Button variant="secondary" type="button" onClick={onClose}>
-              Cancel
+              {text.cancel}
             </Button>
             <Button variant="primary" type="submit">
-              Save
+              {text.save}
             </Button>
           </div>
         </form>
