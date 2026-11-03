@@ -1,7 +1,7 @@
 {
   "name": "stocks-pie",
   "private": true,
-  "version": "1.2.0",
+  "version": "1.2.1",
   "type": "module",
   "description": "Buy-only portfolio rebalancing for pie investing: an app for desktop and Android with a web preview.",
   "scripts": {
