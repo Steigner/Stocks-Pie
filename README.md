@@ -88,7 +88,7 @@ Generate the icons once with `npx tauri icon src-tauri/app-icon.svg`, then run
 
 To release, push a tag like `v1.0.0` that matches the version in `package.json`.
 GitHub builds the installers and the Android APK into a draft release. Every push to `main` updates
-the web preview.
+the web preview. On GitHub's free plan, both only work while the repo is public.
 
 The APK needs a signing key, stored in three repository secrets:
 `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD` and `ANDROID_KEY_ALIAS`. Keep a
