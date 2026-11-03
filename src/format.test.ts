@@ -17,11 +17,11 @@ describe('localized formatting', () => {
     const format = createFormatters('cs');
 
     expect(format.formatMoney(12345.6, 'EUR')).toBe('12\u00a0346 EUR');
-    expect(format.formatPct(12.5)).toBe('12,5 %');
-    expect(format.formatPct(33.34, null)).toBe('33,34 %');
-    expect(format.formatSignedPct(1.5)).toBe('+1,5 p. b.');
-    expect(format.formatSignedPct(-1.5)).toBe('-1,5 p. b.');
-    expect(format.formatSignedPct(0)).toBe('0,0 p. b.');
+    expect(format.formatPct(12.5)).toBe('12,5\u00a0%');
+    expect(format.formatPct(33.34, null)).toBe('33,34\u00a0%');
+    expect(format.formatSignedPct(1.5)).toBe('+1,5\u00a0p.\u00a0b.');
+    expect(format.formatSignedPct(-1.5)).toBe('-1,5\u00a0p.\u00a0b.');
+    expect(format.formatSignedPct(0)).toBe('0,0\u00a0p.\u00a0b.');
     expect(format.formatDate('2026-08-31')).toBe('31. 8. 2026');
   });
 });

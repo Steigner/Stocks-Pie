@@ -15,9 +15,9 @@ export function createFormatters(language: Language) {
     formatMoney: (amount: number, currency: string): string =>
       `${amountFormatter.format(Math.round(amount))} ${currency}`,
     formatPct: (value: number, fractionDigits: number | null = 1): string =>
-      `${decimal(value, fractionDigits)}${language === 'cs' ? ' %' : '%'}`,
+      `${decimal(value, fractionDigits)}${language === 'cs' ? '\u00a0%' : '%'}`,
     formatSignedPct: (value: number, fractionDigits = 1): string =>
-      `${value > 0 ? '+' : ''}${decimal(value, fractionDigits)} ${language === 'cs' ? 'p. b.' : 'pp'}`,
+      `${value > 0 ? '+' : ''}${decimal(value, fractionDigits)}${language === 'cs' ? '\u00a0p.\u00a0b.' : ' pp'}`,
     formatDate: (iso: string): string => {
       // Parsing calendar parts avoids shifting a date through UTC.
       const [year, month, day] = iso.split('-').map(Number);

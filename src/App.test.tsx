@@ -86,7 +86,7 @@ describe('App', () => {
     expect(localStorage.getItem('stocks-pie:language')).toBe('cs');
     await user.click(screen.getByRole('button', { name: 'Historie' }));
     expect(
-      screen.getByText('Zatím nejsou zaznamenané žádné vklady.'),
+      screen.getByText('Zatím nejsou zaznamenány žádné vklady.'),
     ).toBeInTheDocument();
     expect(store.saved).toEqual([]);
 
@@ -118,12 +118,12 @@ describe('App', () => {
     );
 
     expect(
-      screen.getByRole('heading', { name: 'Zadejte tyto příkazy' }),
+      screen.getByRole('heading', { name: 'Zadejte tyto pokyny' }),
     ).toBeInTheDocument();
     expect(screen.getByText('60 000 CZK')).toBeInTheDocument();
-    expect(screen.getByText('0,0 % na 60,0 %, cíl 60 %')).toBeInTheDocument();
+    expect(screen.getByText('z 0,0 % na 60,0 %, cíl 60 %')).toBeInTheDocument();
     expect(screen.getByLabelText('Portfolio po tomto nákupu')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Příkazy jsou zadané' }));
+    await user.click(screen.getByRole('button', { name: 'Pokyny jsou zadány' }));
     expect(screen.getByText(/Zaznamenáno 100 000 CZK/)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Historie' }));
     expect(screen.getByRole('heading', { name: 'Historie (1)' })).toBeInTheDocument();
@@ -146,7 +146,7 @@ describe('App', () => {
     expect(within(dialog).getByRole('button', { name: 'Zrušit' })).toBeInTheDocument();
     await user.click(within(dialog).getByRole('button', { name: 'Smazat' }));
     expect(
-      screen.getByText('Zatím nejsou zaznamenané žádné vklady.'),
+      screen.getByText('Zatím nejsou zaznamenány žádné vklady.'),
     ).toBeInTheDocument();
     await waitFor(() =>
       expect(store.saved.at(-1)?.positions).toEqual(PORTFOLIO.positions),
