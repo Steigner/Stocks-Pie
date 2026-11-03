@@ -6,6 +6,7 @@ import { ThemeToggle } from '../components/ui/ThemeToggle';
 import { CURRENCY_CHOICES } from '../domain/currencies';
 import { DOWNLOAD_URL } from '../download';
 import { usePortfolio } from '../state/PortfolioContext';
+import { useTranslation } from '../useTranslation';
 import styles from './SettingsScreen.module.css';
 
 /** Saved when the field is left, so typing an amount writes the file only once. */
@@ -18,16 +19,14 @@ function MinOrderField({
   currency: string;
   onCommit: (minOrder: number) => void;
 }) {
+  const { text } = useTranslation();
   const [draft, setDraft] = useState(String(minOrder));
 
   return (
     <div className={styles.field}>
       <span className={styles.withTip}>
-        <label htmlFor="min-order">Minimum order per position ({currency})</label>
-        <InfoTip label="the minimum order">
-          The smallest order worth paying your broker&apos;s fee for. Use 0 if the fee
-          is just a percentage.
-        </InfoTip>
+        <label htmlFor="min-order">{text.minOrder(currency)}</label>
+        <InfoTip label={text.minOrderInfo}>{text.minOrderHelp}</InfoTip>
       </span>
       <input
         id="min-order"
@@ -52,6 +51,7 @@ function MinOrderField({
 }
 
 export function SettingsScreen() {
+  const { text, language, setLanguage } = useTranslation();
   const { portfolio, locationLabel, connect, isPreview, savePositions } =
     usePortfolio();
 
@@ -70,20 +70,33 @@ export function SettingsScreen() {
 
   return (
     <div className={styles.screen}>
-      <h1>Settings</h1>
+      <h1>{text.settings}</h1>
 
       <Card className={styles.section}>
-        <h2 className={styles.sectionTitle}>Your data</h2>
+        <h2 className={styles.sectionTitle}>
+          <label htmlFor="language">{text.language}</label>
+        </h2>
+        <select
+          id="language"
+          className={styles.input}
+          value={language}
+          onChange={(event) => setLanguage(event.target.value === 'cs' ? 'cs' : 'en')}
+        >
+          <option value="en" lang="en">
+            English
+          </option>
+          <option value="cs" lang="cs">
+            Čeština
+          </option>
+        </select>
+      </Card>
+
+      <Card className={styles.section}>
+        <h2 className={styles.sectionTitle}>{text.yourData}</h2>
         {isPreview ? (
           <>
-            <p>
-              This preview doesn&apos;t save anything. Close the page and it starts
-              over.
-            </p>
-            <p>
-              The app saves <code>portfolio.json</code> to a folder you choose and never
-              goes online.
-            </p>
+            <p>{text.previewData}</p>
+            <p>{text.appData}</p>
             <div className={styles.actions}>
               <LinkButton
                 variant="primary"
@@ -91,21 +104,19 @@ export function SettingsScreen() {
                 target="_blank"
                 rel="noreferrer"
               >
-                Download the app
+                {text.download}
               </LinkButton>
             </div>
           </>
         ) : (
           <>
             <span className={styles.folderName}>
-              {locationLabel ? `Folder: ${locationLabel}` : 'No folder connected'}
+              {locationLabel ? text.folder(locationLabel) : text.noFolder}
             </span>
-            <p>
-              Every change is saved to <code>portfolio.json</code> in this folder.
-            </p>
+            <p>{text.savedData}</p>
             <div className={styles.actions}>
               <Button variant="secondary" onClick={() => void connect()}>
-                Change folder
+                {text.changeFolder}
               </Button>
             </div>
           </>
@@ -113,14 +124,12 @@ export function SettingsScreen() {
       </Card>
 
       <Card className={styles.section}>
-        <h2 className={styles.sectionTitle}>Portfolio</h2>
+        <h2 className={styles.sectionTitle}>{text.portfolio}</h2>
         <div className={styles.fields}>
           <div className={styles.field}>
             <span className={styles.withTip}>
-              <label htmlFor="currency">Currency</label>
-              <InfoTip label="the currency setting">
-                Just a label. The app never converts amounts.
-              </InfoTip>
+              <label htmlFor="currency">{text.currency}</label>
+              <InfoTip label={text.currencyInfo}>{text.currencyHelp}</InfoTip>
             </span>
             <select
               id="currency"
@@ -148,13 +157,11 @@ export function SettingsScreen() {
       </Card>
 
       <Card className={styles.section}>
-        <h2 className={styles.sectionTitle}>Theme</h2>
+        <h2 className={styles.sectionTitle}>{text.theme}</h2>
         <ThemeToggle />
       </Card>
 
-      <p className={styles.disclaimer}>
-        Not investment advice. Always check your orders before you place them.
-      </p>
+      <p className={styles.disclaimer}>{text.disclaimer}</p>
     </div>
   );
 }

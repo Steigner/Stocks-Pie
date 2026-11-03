@@ -10,18 +10,15 @@ import { InfoTip } from '../components/ui/InfoTip';
 import { targetsAddUp } from '../domain/allocation';
 import { normalizeTargets } from '../domain/portfolio';
 import type { Position } from '../domain/types';
-import { formatMoney, formatPct } from '../format';
 import { usePortfolio } from '../state/PortfolioContext';
+import { useTranslation } from '../useTranslation';
 import styles from './PortfolioScreen.module.css';
 
 /** A row's place in the list, or a position that does not exist yet. */
 type Editing = number | 'new';
 
-function positionLabel(position: Position): string {
-  return position.ticker || position.name || 'position';
-}
-
 export function PortfolioScreen() {
+  const { text, formatMoney, formatPct } = useTranslation();
   const { portfolio, savePositions } = usePortfolio();
   const [editing, setEditing] = useState<Editing | null>(null);
   const [removing, setRemoving] = useState(false);
@@ -31,6 +28,8 @@ export function PortfolioScreen() {
   }
 
   const { positions, currency, minOrder } = portfolio;
+  const positionLabel = (position: Position): string =>
+    position.ticker || position.name || text.unnamedPosition;
   const save = (next: readonly Position[]) => savePositions(next, minOrder, currency);
 
   const totalHolding = positions.reduce((total, item) => total + item.holding, 0);
@@ -60,11 +59,8 @@ export function PortfolioScreen() {
     <div className={styles.screen}>
       <div className={styles.heading}>
         <div className={styles.withTip}>
-          <h1>Portfolio</h1>
-          <InfoTip label="the portfolio list">
-            Enter what you hold and the share you want for each. Targets must add up to
-            100%.
-          </InfoTip>
+          <h1>{text.portfolio}</h1>
+          <InfoTip label={text.portfolioInfo}>{text.portfolioHelp}</InfoTip>
         </div>
         <span className={styles.total}>{formatMoney(totalHolding, currency)}</span>
       </div>
@@ -77,17 +73,17 @@ export function PortfolioScreen() {
               variant="secondary"
               onClick={() => save(normalizeTargets(positions))}
             >
-              Make them 100%
+              {text.normalize}
             </Button>
           }
         >
-          Targets add up to {formatPct(totalPct)}, not 100%.
+          {text.targetsTotal(formatPct(totalPct))}
         </Banner>
       )}
 
       <Card>
         {positions.length === 0 ? (
-          <p>No positions yet.</p>
+          <p>{text.noPositions}</p>
         ) : (
           // Keyed by place: a file edited by hand can hold a blank or repeated ticker.
           <ul className={styles.list}>
@@ -99,7 +95,7 @@ export function PortfolioScreen() {
                   <button
                     type="button"
                     className={styles.row}
-                    aria-label={`Edit ${positionLabel(position)}`}
+                    aria-label={text.editPosition(positionLabel(position))}
                     onClick={() => setEditing(index)}
                   >
                     <span className={styles.rowLine}>
@@ -112,9 +108,11 @@ export function PortfolioScreen() {
                       </span>
                     </span>
                     <span className={styles.rowLine}>
-                      <span className={styles.detail}>{formatPct(share)} now</span>
                       <span className={styles.detail}>
-                        target {formatPct(position.targetPct)}
+                        {text.currentShare(formatPct(share))}
+                      </span>
+                      <span className={styles.detail}>
+                        {text.targetShare(formatPct(position.targetPct))}
                       </span>
                     </span>
                     <TargetBar currentPct={share} targetPct={position.targetPct} />
@@ -130,7 +128,7 @@ export function PortfolioScreen() {
           className={styles.addButton}
           onClick={() => setEditing('new')}
         >
-          Add position
+          {text.addPosition}
         </Button>
       </Card>
 
@@ -153,12 +151,12 @@ export function PortfolioScreen() {
 
       {removing && editingPosition && (
         <ConfirmDialog
-          title={`Remove ${positionLabel(editingPosition)}?`}
-          confirmLabel="Remove"
+          title={text.removePosition(positionLabel(editingPosition))}
+          confirmLabel={text.remove}
           onCancel={() => setRemoving(false)}
           onConfirm={handleRemove}
         >
-          It leaves your portfolio. Your history stays.
+          {text.removeHelp}
         </ConfirmDialog>
       )}
     </div>

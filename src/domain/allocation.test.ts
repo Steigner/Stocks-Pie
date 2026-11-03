@@ -303,20 +303,35 @@ describe('validatePosition', () => {
   });
 
   it.each([
-    [{ ticker: ' ', targetPct: 10, holding: 0 }, 'Every position needs a ticker.'],
+    [
+      { ticker: ' ', targetPct: 10, holding: 0 },
+      'Every position needs a ticker.',
+      'tickerRequired',
+    ],
     [
       { ticker: 'AAA', targetPct: 10, holding: 0 },
       'Each ticker can only be used once.',
+      'duplicateTicker',
     ],
     [
       { ticker: 'BBB', targetPct: 0, holding: 0 },
       'Every target needs to be more than 0%.',
+      'positiveTarget',
     ],
-    [{ ticker: 'BBB', targetPct: 10, holding: -1 }, "A holding can't be negative."],
-  ])('rejects %o', (fields, message) => {
+    [
+      { ticker: 'BBB', targetPct: 10, holding: -1 },
+      "A holding can't be negative.",
+      'negativeHolding',
+    ],
+  ])('rejects %o', (fields, message, code) => {
     const position = { name: '', ...fields };
 
     expect(() => validatePosition(position, OTHERS)).toThrow(message);
+    try {
+      validatePosition(position, OTHERS);
+    } catch (error) {
+      expect(error).toMatchObject({ issue: { code } });
+    }
   });
 });
 
@@ -332,6 +347,16 @@ describe('targetsAddUp', () => {
 });
 
 describe('validatePositions', () => {
+  it('includes the total in a typed issue for localized validation', () => {
+    const positions = [{ name: '', ticker: 'AAA', targetPct: 90.5, holding: 0 }];
+
+    expect(() => validatePositions(positions)).toThrow(PortfolioValidationError);
+    try {
+      validatePositions(positions);
+    } catch (error) {
+      expect(error).toMatchObject({ issue: { code: 'targetsTotal', totalPct: 90.5 } });
+    }
+  });
   it('accepts targets summing to 100', () => {
     expect(() => validatePositions(EMPTY_PIE)).not.toThrow();
   });

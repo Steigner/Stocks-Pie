@@ -11,6 +11,7 @@ import {
 } from 'react';
 import { emptyPortfolio } from '../domain/portfolio';
 import type { Portfolio, Position, PurchasePlan } from '../domain/types';
+import { readLanguage, saveLanguage, type Language } from '../language';
 import { MemoryPortfolioStore, createPortfolioStore } from '../storage';
 import type { PortfolioStore } from '../storage';
 import { portfolioReducer } from './portfolioReducer';
@@ -18,6 +19,8 @@ import { portfolioReducer } from './portfolioReducer';
 type ConnectionStatus = 'disconnected' | 'connecting' | 'ready' | 'error';
 
 interface PortfolioContextValue {
+  language: Language;
+  setLanguage: (language: Language) => void;
   portfolio: Portfolio | null;
   status: ConnectionStatus;
   errorMessage: string | null;
@@ -65,10 +68,20 @@ export function PortfolioProvider({
   const store = storeRef.current;
 
   const [portfolio, dispatch] = useReducer(portfolioReducer, null);
+  const [language, setLanguageState] = useState<Language>(readLanguage);
   const [status, setStatus] = useState<ConnectionStatus>('disconnected');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [saveErrorMessage, setSaveErrorMessage] = useState<string | null>(null);
   const [locationLabel, setLocationLabel] = useState<string | null>(null);
+
+  const setLanguage = useCallback((next: Language) => {
+    saveLanguage(next);
+    setLanguageState(next);
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.lang = language;
+  }, [language]);
 
   /** What the connected location already holds, so autosave can skip a no-op write. */
   const storedRef = useRef<Portfolio | null>(null);
@@ -166,6 +179,8 @@ export function PortfolioProvider({
 
   const value = useMemo<PortfolioContextValue>(
     () => ({
+      language,
+      setLanguage,
       portfolio,
       status,
       errorMessage,
@@ -178,6 +193,8 @@ export function PortfolioProvider({
       deleteRound,
     }),
     [
+      language,
+      setLanguage,
       portfolio,
       status,
       errorMessage,

@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
 import { emptyPortfolio } from './domain/portfolio';
 import type { Portfolio } from './domain/types';
@@ -64,7 +64,163 @@ async function investOneRound(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe('App', () => {
-  afterEach(cleanupWithHistory);
+  afterEach(async () => {
+    await cleanupWithHistory();
+    vi.restoreAllMocks();
+    localStorage.removeItem('stocks-pie:language');
+    document.documentElement.lang = 'en';
+  });
+
+  it('switches every screen immediately and remembers the language without saving the portfolio', async () => {
+    const user = userEvent.setup();
+    const store = new InMemoryPortfolioStore(PORTFOLIO);
+    const app = render(<App store={store} />);
+    await user.click(await screen.findByRole('button', { name: 'Settings' }));
+
+    await user.selectOptions(screen.getByLabelText('Language'), 'cs');
+
+    expect(screen.getByRole('heading', { name: 'Nastavení' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Jazyk')).toHaveValue('cs');
+    expect(screen.getByRole('button', { name: 'Tmavý' })).toBeInTheDocument();
+    expect(document.documentElement).toHaveAttribute('lang', 'cs');
+    expect(localStorage.getItem('stocks-pie:language')).toBe('cs');
+    await user.click(screen.getByRole('button', { name: 'Historie' }));
+    expect(
+      screen.getByText('Zatím nejsou zaznamenané žádné vklady.'),
+    ).toBeInTheDocument();
+    expect(store.saved).toEqual([]);
+
+    app.unmount();
+    const restarted = render(<App store={store} />);
+    expect(
+      await screen.findByRole('heading', { name: 'Investovat' }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Nastavení' }));
+    await user.selectOptions(screen.getByLabelText('Jazyk'), 'en');
+    expect(screen.getByRole('heading', { name: 'Settings' })).toBeInTheDocument();
+    expect(localStorage.getItem('stocks-pie:language')).toBe('en');
+
+    restarted.unmount();
+    render(<App store={store} />);
+    expect(await screen.findByRole('heading', { name: 'Invest' })).toBeInTheDocument();
+    expect(document.documentElement).toHaveAttribute('lang', 'en');
+    expect(store.saved).toEqual([]);
+  });
+
+  it('records and deletes a deposit in Czech with local numbers and dates', async () => {
+    localStorage.setItem('stocks-pie:language', 'cs');
+    const user = userEvent.setup();
+    const store = new InMemoryPortfolioStore(PORTFOLIO);
+    render(<App store={store} />);
+    await user.type(
+      await screen.findByLabelText('Kolik chcete investovat (CZK)'),
+      '100000',
+    );
+
+    expect(
+      screen.getByRole('heading', { name: 'Zadejte tyto příkazy' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('60 000 CZK')).toBeInTheDocument();
+    expect(screen.getByText('0,0 % na 60,0 %, cíl 60 %')).toBeInTheDocument();
+    expect(screen.getByLabelText('Portfolio po tomto nákupu')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Příkazy jsou zadané' }));
+    expect(screen.getByText(/Zaznamenáno 100 000 CZK/)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Historie' }));
+    expect(screen.getByRole('heading', { name: 'Historie (1)' })).toBeInTheDocument();
+    expect(screen.getByText('Investováno 100 000 CZK')).toBeInTheDocument();
+    await waitFor(() => expect(store.saved.at(-1)?.rounds).toHaveLength(1));
+    const roundDate = store.saved.at(-1)!.rounds[0]!.on;
+    const [year, month, day] = roundDate.split('-').map(Number);
+    expect(
+      screen.getByText(
+        new Date(year!, month! - 1, day!).toLocaleDateString('cs-CZ', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+        }),
+      ),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Smazat' }));
+    const dialog = screen.getByRole('alertdialog', { name: 'Smazat tento vklad?' });
+    expect(within(dialog).getByRole('button', { name: 'Zrušit' })).toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: 'Smazat' }));
+    expect(
+      screen.getByText('Zatím nejsou zaznamenané žádné vklady.'),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(store.saved.at(-1)?.positions).toEqual(PORTFOLIO.positions),
+    );
+  });
+
+  it('translates the editor, validation, explanations and removal dialog', async () => {
+    localStorage.setItem('stocks-pie:language', 'cs');
+    const user = userEvent.setup();
+    render(<App store={new InMemoryPortfolioStore(PORTFOLIO)} />);
+    await openPortfolio(user);
+    await user.click(screen.getByRole('button', { name: 'Nápověda: seznam pozic' }));
+    expect(screen.getByRole('tooltip')).toHaveTextContent(
+      'Cílové podíly musí dát dohromady 100 %.',
+    );
+    expect(screen.getByRole('img', { name: 'Cílové rozložení' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Přidat pozici' }));
+    let dialog = screen.getByRole('dialog', { name: 'Nová pozice' });
+
+    await user.click(within(dialog).getByRole('button', { name: 'Uložit' }));
+    expect(
+      within(dialog).getByText('Každá pozice potřebuje ticker.'),
+    ).toBeInTheDocument();
+    await user.type(within(dialog).getByLabelText('Ticker'), 'ALFA');
+    await user.click(within(dialog).getByRole('button', { name: 'Uložit' }));
+    expect(
+      within(dialog).getByText('Každý ticker lze použít jen jednou.'),
+    ).toBeInTheDocument();
+    expect(within(dialog).getByLabelText('Hodnota pozice (CZK)')).toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: 'Zrušit' }));
+
+    await user.click(screen.getByRole('button', { name: 'Upravit ALFA' }));
+    dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByLabelText('Název')).toHaveValue('Alfa Holding');
+    await user.click(within(dialog).getByRole('button', { name: 'Odebrat' }));
+    expect(
+      screen.getByRole('alertdialog', { name: 'Odebrat ALFA?' }),
+    ).toHaveTextContent('Historie zůstane.');
+  });
+
+  it('translates invalid portfolio totals without changing validation', async () => {
+    localStorage.setItem('stocks-pie:language', 'cs');
+    render(
+      <App
+        store={
+          new InMemoryPortfolioStore({
+            ...PORTFOLIO,
+            positions: [{ ...PORTFOLIO.positions[0]!, targetPct: 90.5 }],
+          })
+        }
+      />,
+    );
+
+    expect(
+      await screen.findByText(/Cílové podíly dávají dohromady 90,50 % místo 100 %/),
+    ).toBeInTheDocument();
+  });
+
+  it('uses the saved language before a folder is connected', async () => {
+    localStorage.setItem('stocks-pie:language', 'cs');
+    const store = new FolderStore(false);
+    vi.spyOn(store, 'restoreFromPreviousVisit').mockResolvedValue(false);
+
+    render(<App store={store} />);
+
+    expect(
+      await screen.findByRole('button', { name: 'Vybrat složku' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Vyberte složku pro soubor portfolio.json. Aplikace si ji zapamatuje.',
+      ),
+    ).toBeInTheDocument();
+  });
 
   it('opens the web preview on the sample portfolio, one click from the download', async () => {
     const user = userEvent.setup();

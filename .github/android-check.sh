@@ -280,4 +280,35 @@ else
   fail "portfolio gone after a device restart: $(texts)"
 fi
 shot rebooted
+
+tap 'Settings'
+if tap_until 'English' 'Čeština' && tap 'Čeština' && wait_for 'Nastavení'; then
+  note "switches to Czech in Settings"
+else
+  fail "could not switch to Czech: $(texts)"
+  shot no-czech
+  finish
+fi
+tap 'Investovat'
+if wait_for 'Kolik chcete investovat'; then
+  note "investment screen translated to Czech"
+else
+  fail "investment screen not translated: $(texts)"
+fi
+shot czech
+
+adb shell am force-stop "$PACKAGE"
+adb shell am start -n "$PACKAGE/.MainActivity"
+if wait_for 'Kolik chcete investovat'; then
+  note "Czech remembered after an app restart"
+else
+  fail "language forgotten after an app restart: $(texts)"
+fi
+tap 'Nastavení'
+if tap_until 'Čeština' 'English' && tap 'English' && wait_for 'Settings'; then
+  note "switches back to English"
+else
+  fail "could not switch back to English: $(texts)"
+fi
+shot language-restored
 finish

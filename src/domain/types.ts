@@ -82,7 +82,19 @@ export interface Portfolio {
 
 /** Raised when positions do not form a valid target allocation. */
 export class PortfolioValidationError extends Error {
-  constructor(message: string) {
+  constructor(
+    message: string,
+    readonly issue:
+      | {
+          readonly code:
+            | 'tickerRequired'
+            | 'duplicateTicker'
+            | 'positiveTarget'
+            | 'negativeHolding'
+            | 'emptyPortfolio';
+        }
+      | { readonly code: 'targetsTotal'; readonly totalPct: number },
+  ) {
     super(message);
     this.name = 'PortfolioValidationError';
   }

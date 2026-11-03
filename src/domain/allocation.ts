@@ -43,16 +43,24 @@ export function validatePosition(
   others: readonly Position[],
 ): void {
   if (position.ticker.trim() === '') {
-    throw new PortfolioValidationError('Every position needs a ticker.');
+    throw new PortfolioValidationError('Every position needs a ticker.', {
+      code: 'tickerRequired',
+    });
   }
   if (others.some((other) => other.ticker === position.ticker)) {
-    throw new PortfolioValidationError('Each ticker can only be used once.');
+    throw new PortfolioValidationError('Each ticker can only be used once.', {
+      code: 'duplicateTicker',
+    });
   }
   if (position.targetPct <= 0) {
-    throw new PortfolioValidationError('Every target needs to be more than 0%.');
+    throw new PortfolioValidationError('Every target needs to be more than 0%.', {
+      code: 'positiveTarget',
+    });
   }
   if (position.holding < 0) {
-    throw new PortfolioValidationError("A holding can't be negative.");
+    throw new PortfolioValidationError("A holding can't be negative.", {
+      code: 'negativeHolding',
+    });
   }
 }
 
@@ -70,7 +78,9 @@ export function targetsAddUp(positions: readonly Position[]): boolean {
  */
 export function validatePositions(positions: readonly Position[]): void {
   if (positions.length === 0) {
-    throw new PortfolioValidationError('Add at least one position.');
+    throw new PortfolioValidationError('Add at least one position.', {
+      code: 'emptyPortfolio',
+    });
   }
 
   positions.forEach((position, index) => {
@@ -84,6 +94,7 @@ export function validatePositions(positions: readonly Position[]): void {
     const totalPct = sum(positions.map((position) => position.targetPct));
     throw new PortfolioValidationError(
       `Targets add up to ${totalPct.toFixed(2)}%, not 100%.`,
+      { code: 'targetsTotal', totalPct },
     );
   }
 }

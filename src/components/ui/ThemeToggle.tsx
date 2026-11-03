@@ -1,14 +1,10 @@
 import { useState } from 'react';
 import { THEMES, applyTheme, readTheme, type Theme } from '../../theme';
+import { useTranslation } from '../../useTranslation';
 import styles from './ThemeToggle.module.css';
 
-const LABELS: Record<Theme, string> = {
-  system: 'Auto',
-  light: 'Light',
-  dark: 'Dark',
-};
-
 export function ThemeToggle() {
+  const { text } = useTranslation();
   const [theme, setTheme] = useState<Theme>(readTheme);
 
   const choose = (next: Theme) => {
@@ -17,7 +13,7 @@ export function ThemeToggle() {
   };
 
   return (
-    <div className={styles.toggle} role="group" aria-label="Colour theme">
+    <div className={styles.toggle} role="group" aria-label={text.colourTheme}>
       {THEMES.map((option) => (
         <button
           key={option}
@@ -26,7 +22,7 @@ export function ThemeToggle() {
           aria-pressed={option === theme}
           onClick={() => choose(option)}
         >
-          {LABELS[option]}
+          {text.themes[option]}
         </button>
       ))}
     </div>
