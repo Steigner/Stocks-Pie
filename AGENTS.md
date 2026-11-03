@@ -84,15 +84,6 @@ contributors.
 - Translate validation errors using their typed issue codes and values. Do not
   match English error messages to select a translation.
 
-## Git Workflow
-
-- Work on a separate branch for each task. Keep follow-up fixes on the same branch.
-- Commit completed changes with an English subject starting with `chore:` and
-  containing at most five words in total.
-- For GPT-6.1 contributions, include
-  `Co-authored-by: GPT-6.1 <noreply@openai.com>` in the commit body.
-- Keep unrelated changes already in the working tree out of the commit.
-
 ## Code Style
 
 - Formatting is owned by **Prettier** ([.prettierrc.json](.prettierrc.json))
